@@ -1,4 +1,4 @@
-use new::New;
+use inew::New;
 
 
 #[test]

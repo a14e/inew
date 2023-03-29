@@ -2,6 +2,7 @@
 name = "inew"
 version = "0.1.0"
 edition = "2021"
+rust-version = 1.58
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
 readme = "README.md"
 keywords = ["builder", "macro", "derive", "constructor"]
