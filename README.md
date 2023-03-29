@@ -137,8 +137,8 @@ fn main() {
 ## java
 [lombok](https://github.com/projectlombok/lombok)
 
-
-## Functionality is also built into the Scala, Kotlin, and Java languages for entities such as  `case class`, `data class`, `record`
+## Non Library
+Functionality is also built into the Scala, Kotlin, and Java languages for entities such as  `case class`, `data class`, `record`
 
 
 
