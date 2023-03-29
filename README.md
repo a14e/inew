@@ -43,7 +43,7 @@ impl MyStruct {
     }
 }
 ```
-But everything here is very obvious, all fields and types are known to us. Therefore, we can hand over constructor generation to a macro
+But everything here is very obvious, all fields and types are known to compiler. Therefore, we can hand over constructor generation to a macro
 ```rust
 #[derive(New)]
 struct MyStruct {
