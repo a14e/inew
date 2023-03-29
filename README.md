@@ -16,7 +16,7 @@ inew = "0.1.0"
 Additionally `[build-dependencies]` would work
 
 # Мinimum supported Rust version
-The minimum working version of Rust is `1.56.0`, which is also currently used for running tests in CI
+The library requires a minimum Rust version of `1.56.0` and utilizes this version for executing tests within the CI environment.
 
 # Example
 Suppose you have a structure and constructor, and we want to make a constructor for it.
