@@ -27,5 +27,5 @@ jobs:
       - name: Run tests
         run: cargo test
 
-      - name: Publish New to crates.io
+      - name: Publish INew to crates.io
         run: cargo publish  --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

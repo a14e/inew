@@ -1,12 +1,12 @@
 [package]
-name = "new"
+name = "inew"
 version = "0.1.0"
 edition = "2021"
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
 readme = "README.md"
 keywords = ["builder", "macro", "derive", "constructor"]
 categories = [ "rust-patterns"]
-repository = "https://github.com/a14e/new"
+repository = "https://github.com/a14e/inew"
 description = "Macroses for constructor generation"
 license = "MIT OR Apache-2.0"
 

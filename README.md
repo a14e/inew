@@ -1,5 +1,5 @@
 
-# New – a library for generating constructors
+# INew – a library for generating constructors
 In Rust, writing constructors is common but can be repetitive and boring. This library simplifies the process, 
 making it more enjoyable and freeing up time for more interesting tasks.
 
@@ -10,7 +10,7 @@ should probably take a look at  [rust-derive-builder](https://github.com/colin-k
 Just add to Cargo.toml
 ```toml
 [dependencies]
-new = "0.1.0"
+inew = "0.1.0"
 ```
 
 Additionally `[build-dependencies]` would work
@@ -48,6 +48,8 @@ impl MyStruct {
 ```
 But everything here is very obvious, all fields and types are known to compiler. Therefore, we can hand over constructor generation to a macro
 ```rust
+use inew::New;
+
 #[derive(New)]
 struct MyStruct {
     x: u32,
@@ -67,6 +69,7 @@ my_func_name().
 Example of usage
 
 ```rust
+use inew::New;
 
 #[derive(New)]
 struct MyAwesomeStruct {
@@ -99,6 +102,8 @@ Generics and lifetimes are supported and work
 
 ## Generics
 ```rust
+use inew::New;
+
 #[derive(New)]
 struct MyStruct<A, B> {
     x: u32,
@@ -113,6 +118,8 @@ fn main() {
 
 ## Lifetimes
 ```rust
+use inew::New;
+
 #[derive(New)]
 struct MyStruct<'a> {
     x: u32,
