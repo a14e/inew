@@ -97,7 +97,7 @@ pub(crate) fn derive_new_impl(ident: Ident,
 
         #[automatically_derived]
         impl #impl_generics  #ident #ty_generics #where_clause {
-            fn new(#(#field_with_types),*) -> Self  {
+           pub fn new(#(#field_with_types),*) -> Self  {
                 let result = Self {
                     #(#constructor_field),*
                     #defaults

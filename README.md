@@ -10,10 +10,8 @@ should probably take a look at  [rust-derive-builder](https://github.com/colin-k
 Just add to Cargo.toml
 ```toml
 [dependencies]
-inew = "0.1.0"
+inew = "0.1.1"
 ```
-
-Additionally `[build-dependencies]` would work
 
 # Мinimum supported Rust version
 The library requires a minimum Rust version of `1.56.0` and utilizes this version for executing tests within the CI environment.
