@@ -72,10 +72,8 @@ struct MyAwesomeStruct {
     entries: Vec<u32>,
     #[new(default)]
     some_values: std::collections::HashSet<u32>,
-
     #[new(default = custom_func)]
-    custom_value: u32,
-    
+    custom_value: u32
 }
 
 fn custom_func() -> u32 {

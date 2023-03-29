@@ -1,13 +1,13 @@
 [package]
 name = "new"
-version = "0.1.2"
+version = "0.1.0"
 edition = "2021"
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
 readme = "README.md"
 keywords = ["builder", "macro", "derive", "constructor"]
 categories = [ "rust-patterns"]
-repository = "https://github.com/a14e/mydi"
-description = "Macroses for MyDI library"
+repository = "https://github.com/a14e/new"
+description = "Macroses for constructor generation"
 license = "MIT OR Apache-2.0"
 
 
