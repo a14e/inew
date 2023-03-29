@@ -9,8 +9,11 @@ should probably take a look at  [rust-derive-builder](https://github.com/colin-k
 # How to add the library to your project?
 Just add to Cargo.toml
 ```toml
+[dependencies]
 new = "0.1.0"
 ```
+
+Additionally `[build-dependencies]` would work
 
 # Мinimum supported Rust version
 The minimum working version of Rust is `1.56.0`, which is also currently used for running tests in CI
@@ -128,6 +131,11 @@ fn main() {
 * Kristina, who was my inspiration
 * Stable Diffusion, which helped me to create logo :-)
 
+# Licensing
+Licensed under either of Apache License, Version 2.0 or MIT license at your option.
+
+# Contribution
+Any contribution is welcome. Just write tests and submit merge requests
 
 # Related projects
 
