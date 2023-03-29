@@ -94,7 +94,7 @@ explicitly. That's why path::to::custom_func will not work.
 
 Generics and lifetimes are supported and work
 
-## Дженерики
+## Generics
 ```rust
 #[derive(New)]
 struct MyStruct<A, B> {
@@ -108,7 +108,7 @@ fn main() {
 }
 ```
 
-## Лайфтаймы
+## Lifetimes
 ```rust
 #[derive(New)]
 struct MyStruct<'a> {
