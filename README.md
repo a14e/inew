@@ -1,5 +1,5 @@
 
-# New -- library for generating constructors.
+# New – a library for generating constructors
 In Rust, writing constructors is common but can be repetitive and boring. This library simplifies the process, 
 making it more enjoyable and freeing up time for more interesting tasks.
 
