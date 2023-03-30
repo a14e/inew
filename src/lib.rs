@@ -10,7 +10,6 @@ use syn::parse::{ParseStream};
 use quote::ToTokens;
 
 // Inspired by a part of SeaORM: https://github.com/SeaQL/sea-orm/blob/master/sea-orm-macros/src/derives/active_model.rs
-// Assistance with macros provided by ChatGPT-4
 #[proc_macro_derive(New, attributes(new))]
 pub fn derive_new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let DeriveInput { ident, data, generics, attrs, .. } = parse_macro_input!(input);
@@ -21,77 +20,78 @@ pub fn derive_new(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 }
 
 
-pub(crate) fn derive_new_impl(ident: Ident,
-                              data: Data,
-                              generics: Generics,
-                              attrs: Vec<Attribute>) -> syn::Result<TokenStream> {
-    let fields: Vec<_> = match &data {
+pub(crate) fn derive_new_impl(
+    ident: Ident,
+    data: Data,
+    generics: Generics,
+    attrs: Vec<Attribute>,
+) -> syn::Result<TokenStream> {
+    let (fields, is_named) = match &data {
         Data::Struct(DataStruct { fields, .. }) => match fields {
-            Fields::Named(named) => named.named.clone(),
+            Fields::Named(named) => (named.named.clone(), true),
+            Fields::Unnamed(unnamed) => (unnamed.unnamed.clone(), false),
             Fields::Unit => Default::default(),
-            _ => {
-                return Ok(quote_spanned! {
-                    ident.span() => compile_error!("you can only derive New on structs with named fields or empty structs");
-                });
-            },
         },
         _ => {
             return Ok(quote_spanned! {
                 ident.span() => compile_error!("you can only derive New on structs");
             });
         }
-    }.into_iter()
-        .collect();
+    };
 
     let props = MainProps::from_attrs(&attrs)?;
 
-    let fields_with_types_and_settings: Vec<(TokenStream, Type, DefaultValue)> = fields.iter()
-        .map(|field| {
-            let ident = format_ident!("{}", field.ident.as_ref().unwrap());
-            let name = quote!( #ident );
-            let typed_name = {
-                let field_type = field.ty.clone();
-                field_type
-            };
+    let fields_with_types_and_settings: Vec<(Ident, Type, DefaultValue)> = fields.iter()
+        .enumerate()
+        .map(|(index, field)| {
+            let ident = field.ident.clone().unwrap_or_else(|| format_ident!("_{}", index));
+            let typed_name = field.ty.clone();
             let default_value = read_default_value(field)?;
-            Ok((name, typed_name, default_value))
+            Ok((ident, typed_name, default_value))
         })
         .collect::<syn::Result<Vec<_>>>()?;
 
     let defaults: Vec<_> = fields_with_types_and_settings.iter()
-        .filter(|(_, _, value)| !matches!(value,  DefaultValue::None))
-        .filter_map(|(filed_name, _, value)| {
+        .map(|(field_name, _, value)| {
             match value {
                 DefaultValue::DefaultFunction(func) => {
-                    Some(quote!(#filed_name: (#func)))
+                    if is_named {
+                        Some(quote!(#field_name: (#func)))
+                    } else {
+                        Some(quote!(#func))
+                    }
                 }
                 DefaultValue::Default => {
-                    Some(quote!(#filed_name: Default::default()))
+                    if is_named {
+                        Some(quote!(#field_name: Default::default()))
+                    } else {
+                        Some(quote!(Default::default()))
+                    }
                 }
                 _ => None
             }
         })
         .collect();
 
-
-    let (constructor_field, field_with_types): (Vec<_>, Vec<_>) = fields_with_types_and_settings.into_iter()
-        .filter_map(|(field, field_type, default_status)| {
-            if let DefaultValue::None = default_status {
-                let field_with_type = quote!( #field : #field_type );
-                return Some((field, field_with_type));
+    let (value_in_constructor, pass_value ): (Vec<_>, Vec<_>) = fields_with_types_and_settings
+        .into_iter()
+        .zip(defaults)
+        .map(|((field, field_type, _), default)| {
+            match default {
+                Some(token) if is_named => {
+                    (None, token)
+                }
+                None => {
+                    let field_with_type = quote!(#field: #field_type);
+                    (Some(field_with_type), quote!(#field))
+                }
+                Some(token) => {
+                    (None, token)
+                }
             }
-            None
         }).unzip();
 
-    let defaults = {
-        if defaults.is_empty() {
-            quote!()
-        } else if constructor_field.is_empty() {
-            quote!(#(#defaults),*)
-        } else {
-            quote!(,#(#defaults),*)
-        }
-    };
+    let constructor_field: Vec<_> = value_in_constructor.into_iter().flatten().collect();
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
@@ -102,22 +102,35 @@ pub(crate) fn derive_new_impl(ident: Ident,
         quote!()
     };
 
-    Ok(quote!(
-
-        #[automatically_derived]
-        impl #impl_generics  #ident #ty_generics #where_clause {
-           #public fn #new_name(#(#field_with_types),*) -> Self  {
-                let result = Self {
-                    #(#constructor_field),*
-                    #defaults
-                };
-                result
+    let constructor = if constructor_field.is_empty() &&
+        pass_value.is_empty() &&
+        !is_named {
+        quote! {
+            #public fn #new_name() -> Self {
+                Self
             }
-
-
-
         }
+    } else if is_named {
+        quote! {
+            #public fn #new_name(#(#constructor_field),*) -> Self {
+                Self {
+                    #(#pass_value),*
+                }
+            }
+        }
+    } else {
+        quote! {
+            #public fn #new_name(#(#constructor_field),*) -> Self {
+                Self(#(#pass_value),* )
+            }
+        }
+    };
 
+    Ok(quote!(
+        #[automatically_derived]
+        impl #impl_generics #ident #ty_generics #where_clause {
+            #constructor
+        }
     ))
 }
 

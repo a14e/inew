@@ -42,7 +42,7 @@ fn basic_new_multiple_fields() {
 fn unit_support() {
     #[derive(New)]
     struct A {
-        x: (),
+        _x: (),
     }
     let _ = A::new();
 }
@@ -53,7 +53,7 @@ fn phantom_support() {
     struct A<T> {
         x: PhantomData<T>,
     }
-    let res: A<u32> = A::new();
+    let _: A<u32> = A::new();
 }
 
 
@@ -119,6 +119,25 @@ fn new_with_default_expr() {
     assert_eq!(res.y, 3);
 }
 
+
+#[test]
+fn unnamed_struct() {
+
+    #[derive(New)]
+    struct A(u32);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+}
+
+#[test]
+fn unnamed_struct_default() {
+
+    #[derive(New)]
+    struct A(#[new(default)]u32);
+
+    let _res = A::new();
+}
 
 #[test]
 fn new_with_default_expr_macro() {
