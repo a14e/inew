@@ -12,7 +12,7 @@ Just add to Cargo.toml
 
 ```toml
 [dependencies]
-inew = "0.2.0"
+inew = "0.2.2"
 ```
 
 # Мinimum supported Rust version
