@@ -1,6 +1,6 @@
 [package]
 name = "inew"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
 readme = "README.md"
