@@ -10,7 +10,7 @@ should probably take a look at  [rust-derive-builder](https://github.com/colin-k
 Just add to Cargo.toml
 ```toml
 [dependencies]
-inew = "0.1.1"
+inew = "0.2.0"
 ```
 
 # Мinimum supported Rust version
@@ -62,7 +62,7 @@ That's it, just add the New annotation
 
 # Default fields and custom functions for generating fields
 If you don't want to pass all the fields, you can fill in some of the fields using annotations `#[new(default)]` for
-initialization with `Default::default()` or `#[new(default = my_func_name)]` for initialization by calling
+initialization with `Default::default()` or `#[new(default = my_func_name())]` for initialization by calling
 my_func_name().
 Example of usage
 
@@ -76,7 +76,7 @@ struct MyAwesomeStruct {
     entries: Vec<u32>,
     #[new(default)]
     some_values: std::collections::HashSet<u32>,
-    #[new(default = custom_func)]
+    #[new(default = custom_func())]
     custom_value: u32
 }
 
@@ -89,10 +89,34 @@ fn main() {
 }
 
 ```
-Unfortunately, at the moment, functions with an explicit path are not supported, they need to be imported into the scope
-explicitly. That's why path::to::custom_func will not work.
+The #[new(default = ...)] attribute can take any valid Rust expression, such as 1 + 1 or vec![1], as its argument.
 
+# Custom names and privacy
+It is also possible to configure the privacy and rename the constructor using attributes.
 
+# Privacy
+```
+#[derive(New)]
+#[new(pub = false)]
+struct MyStruct {
+    x: u32,
+}
+fn main() {
+    MyStruct::new(1) // now it's a private function
+}
+```
+
+# Custom names
+```
+#[derive(New)]
+#[new(rename = "create")]
+struct MyStruct {
+    x: u32,
+}
+fn main() {
+    MyStruct::create(1)
+}
+```
 
 # Generics and lifetimes
 
@@ -146,6 +170,7 @@ Any contribution is welcome. Just write tests and submit merge requests
 
 ## rust
 [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
+[derive-new](https://github.com/nrc/derive-new)
 
 ## java
 [lombok](https://github.com/projectlombok/lombok)
