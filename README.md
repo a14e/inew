@@ -17,7 +17,7 @@ inew = "0.2.3"
 
 # Мinimum supported Rust version
 
-The library requires a minimum Rust version of `1.77.0`.
+The library requires a minimum Rust version of `1.80.0`.
 
 # Example
 

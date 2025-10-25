@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust-version: ['1.77.0', '1.80.0', 'stable']
+        rust-version: ['1.80.0', 'stable']
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
