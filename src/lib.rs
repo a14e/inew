@@ -1,7 +1,7 @@
 extern crate proc_macro;
 
 
-use syn::{parse_macro_input, DeriveInput, Error, Type, Attribute, NestedMeta, Meta};
+use syn::{parse_macro_input, DeriveInput, Error, Type, Attribute};
 use syn::{Field, Data, Fields, DataStruct, Generics};
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote_spanned, quote};
@@ -146,7 +146,7 @@ fn read_default_value(field: &Field) -> Result<DefaultValue> {
     let mut default_value: DefaultValue = DefaultValue::None;
 
     for attribute in &field.attrs {
-        if attribute.path.is_ident("new") {
+        if attribute.path().is_ident("new") {
             if let DefaultValue::None = default_value {
                 let component_args = attribute.parse_args_with(|input: ParseStream| {
                     if input.is_empty() {
@@ -226,59 +226,29 @@ impl MainProps {
         let mut constructor_name = None;
 
         for attr in attrs {
-            if attr.path.is_ident("new") {
-                let meta = attr.parse_meta()?;
-
-                if let Meta::List(meta_list) = meta {
-                    for item in meta_list.nested {
-                        if let NestedMeta::Meta(Meta::NameValue(name_value)) = item {
-                            if name_value.path.is_ident("pub") {
-                                if pub_flag.is_some() {
-                                    return Err(Error::new_spanned(
-                                        name_value,
-                                        "Duplicate 'pub' key found in #[new] attributes.",
-                                    ));
-                                }
-
-                                if let syn::Lit::Bool(lit_bool) = name_value.lit {
-                                    pub_flag = Some(lit_bool.value);
-                                } else {
-                                    return Err(Error::new_spanned(
-                                        name_value.lit,
-                                        "The 'pub' argument must be a boolean value.",
-                                    ));
-                                }
-                            } else if name_value.path.is_ident("rename") {
-                                if constructor_name.is_some() {
-                                    return Err(Error::new_spanned(
-                                        name_value,
-                                        "Duplicate 'rename' key found in #[new] attributes.",
-                                    ));
-                                }
-
-                                if let syn::Lit::Str(lit_str) = name_value.lit {
-                                    constructor_name =
-                                        Some(Ident::new(&lit_str.value(), lit_str.span()));
-                                } else {
-                                    return Err(Error::new_spanned(
-                                        name_value.lit,
-                                        "The 'rename' argument must be a string value.",
-                                    ));
-                                }
-                            } else {
-                                return Err(Error::new_spanned(
-                                    name_value.path,
-                                    "Unknown argument in #[new] attribute.",
-                                ));
-                            }
+            if attr.path().is_ident("new") {
+                attr.parse_nested_meta(|meta| {
+                    if meta.path.is_ident("pub") {
+                        if pub_flag.is_some() {
+                            return Err(meta.error("Duplicate 'pub' key found in #[new] attributes."));
                         }
+
+                        let value = meta.value()?;
+                        let lit: syn::LitBool = value.parse()?;
+                        pub_flag = Some(lit.value);
+                    } else if meta.path.is_ident("rename") {
+                        if constructor_name.is_some() {
+                            return Err(meta.error("Duplicate 'rename' key found in #[new] attributes."));
+                        }
+
+                        let value = meta.value()?;
+                        let lit: syn::LitStr = value.parse()?;
+                        constructor_name = Some(Ident::new(&lit.value(), lit.span()));
+                    } else {
+                        return Err(meta.error("Unknown argument in #[new] attribute."));
                     }
-                } else {
-                    return Err(Error::new_spanned(
-                        meta,
-                        "The #[new] attribute should be a list, e.g., #[new(pub = true, rename = \"new2\")]",
-                    ));
-                }
+                    Ok(())
+                })?;
             }
         }
 
