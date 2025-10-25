@@ -12,13 +12,12 @@ Just add to Cargo.toml
 
 ```toml
 [dependencies]
-inew = "0.2.2"
+inew = "0.2.3"
 ```
 
 # Мinimum supported Rust version
 
-The library requires a minimum Rust version of `1.56.0` and utilizes this version for executing tests within the CI
-environment.
+The library requires a minimum Rust version of `1.70.0`.
 
 # Example
 
