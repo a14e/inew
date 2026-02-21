@@ -39,6 +39,7 @@ fn derive_new_impl(
     let props = MainProps::from_attributes(&attributes)?;
     let new_name = props.rename_arg;
     let public = if props.public { quote!(pub) } else { quote!() };
+    let constant = if props.constant { quote!(const) } else { quote!() };
 
     let fields_with_types_and_settings = collect_field_datas(&fields)?;
     let defaults = build_default_initializers(&fields_with_types_and_settings, is_named);
@@ -46,8 +47,14 @@ fn derive_new_impl(
     let (constructor_field, pass_value) =
         build_constructor_arguments(fields_with_types_and_settings, defaults);
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
-    let constructor =
-        generate_constructor(is_named, constructor_field, pass_value, new_name, public);
+    let constructor = generate_constructor(
+        is_named,
+        constructor_field,
+        pass_value,
+        new_name,
+        public,
+        constant,
+    );
 
     Ok(quote!(
         #[automatically_derived]
@@ -105,11 +112,19 @@ fn build_default_initializer(
     is_named: bool,
 ) -> Option<TokenStream> {
     match value {
-        DefaultValue::CustomFunction(function) => {
+        DefaultValue::None => None,
+        DefaultValue::Unit => {
             if is_named {
-                Some(quote!(#field_name: (#function)))
+                Some(quote!(#field_name: ()))
             } else {
-                Some(quote!(#function))
+                Some(quote!(()))
+            }
+        }
+        DefaultValue::PhantomData => {
+            if is_named {
+                Some(quote!(#field_name: ::core::marker::PhantomData))
+            } else {
+                Some(quote!(::core::marker::PhantomData))
             }
         }
         DefaultValue::Trait => {
@@ -119,7 +134,13 @@ fn build_default_initializer(
                 Some(quote!(Default::default()))
             }
         }
-        DefaultValue::None => None,
+        DefaultValue::CustomFunction(function) => {
+            if is_named {
+                Some(quote!(#field_name: (#function)))
+            } else {
+                Some(quote!(#function))
+            }
+        }
     }
 }
 
@@ -160,10 +181,12 @@ fn generate_constructor(
     pass_value: Vec<TokenStream>,
     new_name: Ident,
     public: TokenStream,
+    constant: TokenStream,
 ) -> TokenStream {
     if constructor_field.is_empty() && pass_value.is_empty() && !is_named {
         return quote! {
-            #public fn #new_name() -> Self {
+            #[must_use]
+            #public #constant fn #new_name() -> Self {
                 Self
             }
         };
@@ -171,7 +194,8 @@ fn generate_constructor(
 
     if is_named {
         return quote! {
-            #public fn #new_name(#(#constructor_field),*) -> Self {
+            #[must_use]
+            #public #constant fn #new_name(#(#constructor_field),*) -> Self {
                 Self {
                     #(#pass_value),*
                 }
@@ -180,7 +204,8 @@ fn generate_constructor(
     }
 
     quote! {
-        #public fn #new_name(#(#constructor_field),*) -> Self {
+        #[must_use]
+        #public #constant fn #new_name(#(#constructor_field),*) -> Self {
             Self(#(#pass_value),* )
         }
     }
@@ -189,6 +214,8 @@ fn generate_constructor(
 #[derive(Debug)]
 enum DefaultValue {
     None,
+    Unit,
+    PhantomData,
     Trait,
     CustomFunction(TokenStream),
 }
@@ -222,10 +249,10 @@ fn read_default_value(field: &Field) -> syn::Result<DefaultValue> {
         }) = &field.ty
         {
             if elements.is_empty() {
-                default_value = DefaultValue::Trait;
+                default_value = DefaultValue::Unit;
             }
         } else if is_phantom_data(&field.ty) {
-            default_value = DefaultValue::Trait;
+            default_value = DefaultValue::PhantomData;
         }
     }
 
@@ -284,25 +311,29 @@ fn is_phantom_data(ty: &Type) -> bool {
 struct MainProps {
     pub public: bool,
     pub rename_arg: Ident,
+    pub constant: bool,
 }
 
 impl MainProps {
     fn from_attributes(attributes: &[Attribute]) -> syn::Result<Self> {
         let mut public = None;
         let mut rename = None;
+        let mut constant = None;
 
         for attribute in attributes {
             if !attribute.path().is_ident("new") {
                 continue;
             }
 
-            attribute
-                .parse_nested_meta(|meta| main_props_parser(meta, &mut public, &mut rename))?;
+            attribute.parse_nested_meta(|meta| {
+                main_props_parser(meta, &mut public, &mut rename, &mut constant)
+            })?;
         }
 
         Ok(Self {
             public: public.unwrap_or(true),
             rename_arg: rename.unwrap_or_else(|| Ident::new("new", Span::call_site())),
+            constant: constant.unwrap_or(false),
         })
     }
 }
@@ -311,6 +342,7 @@ fn main_props_parser(
     meta: ParseNestedMeta<'_>,
     public: &mut Option<bool>,
     rename: &mut Option<Ident>,
+    constant: &mut Option<bool>,
 ) -> syn::Result<()> {
     if meta.path.is_ident("pub") {
         if public.is_some() {
@@ -320,7 +352,10 @@ fn main_props_parser(
         let value = meta.value()?;
         let lit: LitBool = value.parse()?;
         *public = Some(lit.value);
-    } else if meta.path.is_ident("rename") {
+        return Ok(());
+    }
+
+    if meta.path.is_ident("rename") {
         if rename.is_some() {
             return Err(meta.error("Duplicate 'rename' key found in #[new] attributes."));
         }
@@ -328,11 +363,21 @@ fn main_props_parser(
         let value = meta.value()?;
         let lit: LitStr = value.parse()?;
         *rename = Some(Ident::new(&lit.value(), lit.span()));
-    } else {
-        return Err(meta.error("Unknown argument in #[new] attribute."));
+        return Ok(());
     }
 
-    Ok(())
+    if meta.path.is_ident("const") {
+        if constant.is_some() {
+            return Err(meta.error("Duplicate 'const' key found in #[new] attributes."));
+        }
+
+        let value = meta.value()?;
+        let lit: LitBool = value.parse()?;
+        *constant = Some(lit.value);
+        return Ok(());
+    }
+
+    return Err(meta.error("Unknown argument in #[new] attribute."));
 }
 
 #[doc = include_str!("../README.md")]

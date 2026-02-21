@@ -119,10 +119,11 @@ fn struct_with_default() {
 #[test]
 fn tuple_struct_with_default() {
     #[derive(New)]
-    struct A(#[new(default)] u32);
+    struct A(u32, #[new(default)] u64);
 
-    let res = A::new();
-    assert_eq!(res.0, 0);
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 0);
 }
 
 #[test]
@@ -150,7 +151,43 @@ fn tuple_struct_with_default_expression() {
 }
 
 #[test]
-fn struct_with_default_expression_macro() {
+fn struct_with_default_custom_macro() {
+    macro_rules! custom_macro {
+        () => {
+            7
+        };
+    }
+
+    #[derive(New)]
+    struct A {
+        x: u32,
+        #[new(default = custom_macro!())]
+        y: u64,
+    }
+
+    let res = A::new(2);
+    assert_eq!(res.x, 2);
+    assert_eq!(res.y, 7);
+}
+
+#[test]
+fn tuple_struct_with_default_custom_macro() {
+    macro_rules! custom_macro {
+        () => {
+            7
+        };
+    }
+
+    #[derive(New)]
+    struct A(u32, #[new(default = custom_macro!())] u64);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 7);
+}
+
+#[test]
+fn struct_with_default_allocation_macro() {
     #[derive(New)]
     struct A {
         x: u32,
@@ -164,13 +201,45 @@ fn struct_with_default_expression_macro() {
 }
 
 #[test]
-fn tuple_struct_with_default_expression_macro() {
+fn tuple_struct_with_default_allocation_macro() {
     #[derive(New)]
     struct A(u32, #[new(default = vec![ 1u32 ])] Vec<u32>);
 
     let res = A::new(2);
     assert_eq!(res.0, 2);
     assert_eq!(res.1, vec![1]);
+}
+
+#[test]
+fn struct_with_default_const_function() {
+    const fn custom_default() -> u64 {
+        3
+    }
+
+    #[derive(New)]
+    struct A {
+        x: u32,
+        #[new(default = custom_default())]
+        y: u64,
+    }
+
+    let res = A::new(2);
+    assert_eq!(res.x, 2);
+    assert_eq!(res.y, 3);
+}
+
+#[test]
+fn tuple_struct_with_default_const_function() {
+    const fn custom_default() -> u64 {
+        3
+    }
+
+    #[derive(New)]
+    struct A(u32, #[new(default = custom_default())] u64);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
 }
 
 #[test]
@@ -199,6 +268,42 @@ fn tuple_struct_with_default_function() {
 
     #[derive(New)]
     struct A(u32, #[new(default = custom_default())] u64);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
+}
+
+#[test]
+fn struct_with_nested_default_const_function() {
+    mod nested {
+        pub const fn custom_default() -> u64 {
+            3
+        }
+    }
+
+    #[derive(New)]
+    struct A {
+        x: u32,
+        #[new(default = nested::custom_default())]
+        y: u64,
+    }
+
+    let res = A::new(2);
+    assert_eq!(res.x, 2);
+    assert_eq!(res.y, 3);
+}
+
+#[test]
+fn tuple_struct_with_nested_default_const_function() {
+    mod nested {
+        pub const fn custom_default() -> u64 {
+            3
+        }
+    }
+
+    #[derive(New)]
+    struct A(u32, #[new(default = nested::custom_default())] u64);
 
     let res = A::new(2);
     assert_eq!(res.0, 2);
@@ -374,7 +479,7 @@ fn tuple_struct_with_multiple_generics() {
 }
 
 #[test]
-fn struct_with_generics_and_defaults() {
+fn struct_with_default_generics() {
     #[derive(New)]
     struct A<X, Y: Default> {
         x: X,
@@ -388,7 +493,7 @@ fn struct_with_generics_and_defaults() {
 }
 
 #[test]
-fn tuple_struct_with_generics_and_defaults() {
+fn tuple_struct_with_default_generics() {
     #[derive(New)]
     struct A<X, Y: Default>(X, #[new(default)] Y);
 

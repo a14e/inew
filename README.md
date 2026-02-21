@@ -79,7 +79,7 @@ Example of usage
 use inew::New;
 
 #[derive(New)]
-struct MyAwesomeStruct {
+struct MyStruct {
     name: String,
     #[new(default)]
     entries: Vec<u32>,
@@ -94,7 +94,7 @@ fn custom_func() -> u32 {
 }
 
 fn main() {
-    let s = MyAwesomeStruct::new("123".to_owned());
+    let s = MyStruct::new("123".to_owned());
 }
 ```
 
@@ -221,11 +221,58 @@ fn main() {
 }
 ```
 
+### Constant constructors
+
+Derived constant constructors are also supported, but they come with some limitations, see below.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+#[new(const = true)]
+struct MyStruct {
+    x: u32,
+}
+
+fn main() {
+    const S: MyStruct = MyStruct::new(5);
+}
+```
+
+Limitations for default values in constant constructors:
+
+- Trait defaults like `#[new(default)]` attribute are not supported, since `Default` is not yet stable as a `const` trait.
+- Macro defaults like `#[new(default = my_macro!())]` are supported as long as they expand to a constant expression, so any macro that does allocation is not supported.
+- Function defaults like `#[new(default = my_function())]` are supported only if the function is `const`.
+- Any struct with generics cannot have defaults of any kind.
+
+### Unit and PhantomData
+
+Fields with type `()` and `PhantomData` are always initialized with default values and skipped from the derived constructor, even for constant constructors.
+
+```rust
+use inew::New;
+use std::marker::PhantomData;
+
+#[derive(New)]
+#[new(const = true)]
+struct MyStruct<T> {
+    x: (),
+    y: PhantomData<T>,
+}
+
+fn main() {
+    // Both cases below are valid
+    let s: MyStruct<u32> = MyStruct::new();
+    const S: MyStruct<u32> = MyStruct::new();
+}
+```
+
 ## Special thanks to
 
-* Chat GPT-4, which helped me write all this documentation and correct a huge number of errors in the code
-* Kristina, who was my inspiration
-* Stable Diffusion, which helped me to create logo :-)
+- Chat GPT-4, which helped me write all this documentation and correct a huge number of errors in the code
+- Kristina, who was my inspiration
+- Stable Diffusion, which helped me to create logo :-)
 
 ## Licensing
 
@@ -247,7 +294,8 @@ Below is a list of differences in the table.
 | Enum support                            | No   | Yes        |
 | Constructor privacy settings            | Yes  | No         |
 | Constructor renaming                    | Yes  | No         |
-| Unnamed structures support              | Yes  | Yes        |
+| Tuple structs support                   | Yes  | Yes        |
+| Constant constructors support           | Yes  | No         |
 
 ## Related projects
 
