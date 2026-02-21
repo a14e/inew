@@ -6,7 +6,7 @@ making it more enjoyable and freeing up time for more interesting tasks.
 The purpose of this library is to cover the most basic and frequent case. If you want more complex generation, you
 should probably take a look at  [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
 
-# How to add the library to your project?
+## How to add the library to your project?
 
 Just add to Cargo.toml
 
@@ -15,11 +15,11 @@ Just add to Cargo.toml
 inew = "0.2.3"
 ```
 
-# Мinimum supported Rust version
+## Мinimum supported Rust version
 
 The library requires a minimum Rust version of `1.80.0`.
 
-# Example
+## Usage examples
 
 Suppose you have a structure and constructor, and we want to make a constructor for it.
 And it looks like this
@@ -68,7 +68,7 @@ struct MyStruct {
 
 That's it, just add the New annotation
 
-# Default fields and custom functions for generating fields
+### Default fields and custom functions for generating fields
 
 If you don't want to pass all the fields, you can fill in some of the fields using annotations `#[new(default)]` for
 initialization with `Default::default()` or `#[new(default = my_func_name())]` for initialization by calling
@@ -94,34 +94,21 @@ fn custom_func() -> u32 {
 }
 
 fn main() {
-    MyAwesomeStruct::new("123".to_owned())
+    let s = MyAwesomeStruct::new("123".to_owned());
 }
-
 ```
 
 The #[new(default = ...)] attribute can take any valid Rust expression, such as 1 + 1 or vec![1], as its argument.
 
-# Custom names and privacy
+### Custom names and privacy
 
 It is also possible to configure the privacy and rename the constructor using attributes.
 
-# Privacy
+#### Custom names
 
 ```rust
-#[derive(New)]
-#[new(pub = false)]
-struct MyStruct {
-    x: u32,
-}
+use inew::New;
 
-fn main() {
-    MyStruct::new(1) // now it's a private function
-}
-```
-
-# Custom names
-
-```rust
 #[derive(New)]
 #[new(rename = "create")]
 struct MyStruct {
@@ -129,32 +116,48 @@ struct MyStruct {
 }
 
 fn main() {
-    MyStruct::create(1)
+    let s = MyStruct::create(1);
 }
 ```
 
-# Generics and lifetimes
-
-Generics and lifetimes are supported and work
-
-## Generics
+#### Privacy
 
 ```rust
 use inew::New;
 
 #[derive(New)]
-struct MyStruct<A, B> {
+#[new(pub = false)]
+struct MyStruct {
     x: u32,
-    y: A,
-    z: B,
 }
 
 fn main() {
-    MyStruct::new(1u32, 2u64, 3u16)
+    let s = MyStruct::new(1); // now it's a private function
 }
 ```
 
-## Lifetimes
+### Generics and lifetimes
+
+Generics and lifetimes are supported and work
+
+#### Generics
+
+```rust
+use inew::New;
+
+#[derive(New)]
+struct MyStruct<Y, Z> {
+    x: u32,
+    y: Y,
+    z: Z,
+}
+
+fn main() {
+    let s = MyStruct::new(1u32, 2u64, 3u16);
+}
+```
+
+#### Lifetimes
 
 ```rust
 use inew::New;
@@ -167,13 +170,30 @@ struct MyStruct<'a> {
 
 fn main() {
     let y = 1u16;
-    MyStruct::new(x, &y)
+    let s = MyStruct::new(1, &y);
 }
 ```
 
-# Unnamed structures
+### Static lifetimes
 
-Unnamed structures are fully supported as well
+```rust
+use inew::New;
+
+const NAME: &str = "John";
+
+#[derive(New)]
+struct MyStruct {
+    name: &'static str,
+}
+
+fn main() {
+    let s = MyStruct::new(NAME);
+}
+```
+
+### Tuple structs
+
+[Tuple structs](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#creating-different-types-with-tuple-structs) are fully supported as well
 
 ```rust
 use inew::New;
@@ -182,25 +202,40 @@ use inew::New;
 struct MyStruct(u32);
 
 fn main() {
-    MyStruct::new(1)
+    let s = MyStruct::new(1);
 }
 ```
 
-# Special thanks to
+### Unit-like structs
+
+[Unit-like structs](https://doc.rust-lang.org/book/ch05-01-defining-structs.html#defining-unit-like-structs) also work as expected
+
+```rust
+use inew::New;
+
+#[derive(New)]
+struct MyStruct;
+
+fn main() {
+    let s = MyStruct::new();
+}
+```
+
+## Special thanks to
 
 * Chat GPT-4, which helped me write all this documentation and correct a huge number of errors in the code
 * Kristina, who was my inspiration
 * Stable Diffusion, which helped me to create logo :-)
 
-# Licensing
+## Licensing
 
 Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 
-# Contribution
+## Contribution
 
 Any contribution is welcome. Just write tests and submit merge requests
 
-# Difference from derive-new
+## Comparison with derive-new
 
 There is a very similar library with almost the same set of features and syntax. [derive-new](https://github.com/nrc/derive-new)
 Below is a list of differences in the table.
@@ -214,22 +249,19 @@ Below is a list of differences in the table.
 | Constructor renaming                    | Yes  | No         |
 | Unnamed structures support              | Yes  | Yes        |
 
-# Related projects
+## Related projects
 
-## rust
+### Rust libraries
 
 [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
 [derive-new](https://github.com/nrc/derive-new)
 [derive_more](https://github.com/JelteF/derive_more)
 
-## java
+### Java libraries
 
 [lombok](https://github.com/projectlombok/lombok)
 
-## Non Library
+### Non-library projects
 
 Functionality is also built into the Scala, Kotlin, and Java languages for entities such
 as  `case class`, `data class`, `record`
-
-
-

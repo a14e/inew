@@ -1,77 +1,180 @@
-use std::marker::PhantomData;
 use inew::New;
-
+use std::marker::PhantomData;
 
 #[test]
-fn basic_new_single_field() {
+fn unit_like_struct_with_braces() {
+    #[derive(Debug, PartialEq, New)]
+    struct A {}
+
+    let res = A::new();
+    assert_eq!(res, A {});
+}
+
+#[test]
+fn unit_like_struct_without_braces() {
+    #[derive(Debug, PartialEq, New)]
+    struct A;
+
+    let res = A::new();
+    assert_eq!(res, A {});
+}
+
+#[test]
+fn struct_single_field() {
     #[derive(New)]
     struct A {
         x: u32,
     }
+
     let res = A::new(1);
     assert_eq!(res.x, 1)
 }
 
 #[test]
-fn basic_new_zero_field() {
+fn tuple_struct_single_field() {
     #[derive(New)]
-    struct A {}
-    let _ = A::new();
+    struct A(u32);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
 }
 
 #[test]
-fn basic_new_without_braces() {
-    #[derive(New)]
-    struct A;
-    let _ = A::new();
-}
-
-#[test]
-fn basic_new_multiple_fields() {
+fn struct_multiple_fields() {
     #[derive(New)]
     struct A {
         x: u32,
         y: u64,
     }
+
     let res = A::new(2, 3);
     assert_eq!(res.x, 2);
     assert_eq!(res.y, 3);
 }
 
 #[test]
-fn unit_support() {
+fn tuple_struct_multiple_fields() {
     #[derive(New)]
-    struct A {
-        _x: (),
-    }
-    let _ = A::new();
+    struct A(u32, u64);
+
+    let res = A::new(2, 3);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
 }
 
 #[test]
-fn phantom_support() {
+fn struct_unit_auto_default() {
+    #[derive(New)]
+    struct A {
+        x: (),
+    }
+
+    let res = A::new();
+    assert_eq!(res.x, ());
+}
+
+#[test]
+fn tuple_struct_unit_auto_default() {
+    #[derive(New)]
+    struct A(());
+
+    let res = A::new();
+    assert_eq!(res.0, ());
+}
+
+#[test]
+fn struct_phantom_data_auto_default() {
     #[derive(New)]
     struct A<T> {
         x: PhantomData<T>,
     }
-    let _: A<u32> = A::new();
+
+    let res: A<u32> = A::new();
+    assert_eq!(res.x, PhantomData);
 }
 
+#[test]
+fn tuple_struct_phantom_data_auto_default() {
+    #[derive(New)]
+    struct A<T>(PhantomData<T>);
+
+    let res: A<u32> = A::new();
+    assert_eq!(res.0, PhantomData);
+}
 
 #[test]
-fn new_with_default() {
+fn struct_with_default() {
     #[derive(New)]
     struct A {
         x: u32,
         #[new(default)]
         y: u64,
     }
+
     let res = A::new(2);
     assert_eq!(res.x, 2);
     assert_eq!(res.y, 0);
 }
 
 #[test]
-fn new_with_default_func() {
+fn tuple_struct_with_default() {
+    #[derive(New)]
+    struct A(#[new(default)] u32);
+
+    let res = A::new();
+    assert_eq!(res.0, 0);
+}
+
+#[test]
+fn struct_with_default_expression() {
+    #[derive(New)]
+    struct A {
+        x: u32,
+        #[new(default = 1 + 2)]
+        y: u64,
+    }
+
+    let res = A::new(2);
+    assert_eq!(res.x, 2);
+    assert_eq!(res.y, 3);
+}
+
+#[test]
+fn tuple_struct_with_default_expression() {
+    #[derive(New)]
+    struct A(u32, #[new(default = 1 + 2)] u64);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
+}
+
+#[test]
+fn struct_with_default_expression_macro() {
+    #[derive(New)]
+    struct A {
+        x: u32,
+        #[new(default = vec![ 1u32 ])]
+        y: Vec<u32>,
+    }
+
+    let res = A::new(2);
+    assert_eq!(res.x, 2);
+    assert_eq!(res.y, vec![1]);
+}
+
+#[test]
+fn tuple_struct_with_default_expression_macro() {
+    #[derive(New)]
+    struct A(u32, #[new(default = vec![ 1u32 ])] Vec<u32>);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, vec![1]);
+}
+
+#[test]
+fn struct_with_default_function() {
     fn custom_default() -> u64 {
         3
     }
@@ -82,13 +185,28 @@ fn new_with_default_func() {
         #[new(default = custom_default())]
         y: u64,
     }
+
     let res = A::new(2);
     assert_eq!(res.x, 2);
     assert_eq!(res.y, 3);
 }
 
 #[test]
-fn new_with_default_func_nested() {
+fn tuple_struct_with_default_function() {
+    fn custom_default() -> u64 {
+        3
+    }
+
+    #[derive(New)]
+    struct A(u32, #[new(default = custom_default())] u64);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
+}
+
+#[test]
+fn struct_with_nested_default_function() {
     mod nested {
         pub fn custom_default() -> u64 {
             3
@@ -101,60 +219,30 @@ fn new_with_default_func_nested() {
         #[new(default = nested::custom_default())]
         y: u64,
     }
+
     let res = A::new(2);
     assert_eq!(res.x, 2);
     assert_eq!(res.y, 3);
 }
-#[test]
-fn new_with_default_expr() {
 
-    #[derive(New)]
-    struct A {
-        x: u32,
-        #[new(default = 1 + 2)]
-        y: u64,
+#[test]
+fn tuple_struct_with_nested_default_function() {
+    mod nested {
+        pub fn custom_default() -> u64 {
+            3
+        }
     }
-    let res = A::new(2);
-    assert_eq!(res.x, 2);
-    assert_eq!(res.y, 3);
-}
-
-
-#[test]
-fn unnamed_struct() {
 
     #[derive(New)]
-    struct A(u32);
+    struct A(u32, #[new(default = nested::custom_default())] u64);
 
     let res = A::new(2);
     assert_eq!(res.0, 2);
+    assert_eq!(res.1, 3);
 }
 
 #[test]
-fn unnamed_struct_default() {
-
-    #[derive(New)]
-    struct A(#[new(default)]u32);
-
-    let _res = A::new();
-}
-
-#[test]
-fn new_with_default_expr_macro() {
-
-    #[derive(New)]
-    struct A {
-        x: u32,
-        #[new(default = vec![ 1u32 ])]
-        _y: Vec<u32>,
-    }
-    let res = A::new(2);
-    assert_eq!(res.x, 2);
-}
-
-
-#[test]
-fn new_with_all_default() {
+fn struct_with_all_defaults() {
     #[derive(New)]
     struct A {
         #[new(default)]
@@ -162,106 +250,265 @@ fn new_with_all_default() {
         #[new(default)]
         y: u64,
     }
-    let res = A::new();
 
+    let res = A::new();
     assert_eq!(res.x, 0);
     assert_eq!(res.y, 0);
 }
 
+#[test]
+fn tuple_struct_with_all_defaults() {
+    #[derive(New)]
+    struct A(#[new(default)] u32, #[new(default)] u64);
+
+    let res = A::new();
+    assert_eq!(res.0, 0);
+    assert_eq!(res.1, 0);
+}
 
 #[test]
-fn new_with_generics_with_single_field() {
+fn struct_with_mixed_all_defaults() {
+    fn custom_default() -> u8 {
+        5
+    }
+
+    #[derive(New)]
+    struct A {
+        #[new(default)]
+        x: u32,
+        #[new(default = 1 + 2)]
+        y: u64,
+        #[new(default = custom_default())]
+        z: u8,
+    }
+
+    let res = A::new();
+    assert_eq!(res.x, 0);
+    assert_eq!(res.y, 3);
+    assert_eq!(res.z, 5);
+}
+
+#[test]
+fn tuple_struct_with_mixed_all_defaults() {
+    fn custom_default() -> u8 {
+        5
+    }
+
+    #[derive(New)]
+    struct A(
+        #[new(default)] u32,
+        #[new(default = 1 + 2)] u64,
+        #[new(default = custom_default())] u8,
+    );
+
+    let res = A::new();
+    assert_eq!(res.0, 0);
+    assert_eq!(res.1, 3);
+    assert_eq!(res.2, 5);
+}
+
+#[test]
+fn struct_with_single_generic() {
     #[derive(New)]
     struct A<T> {
         x: T,
     }
+
     let res = A::new(1);
     assert_eq!(res.x, 1);
 }
 
 #[test]
-fn new_with_generics_with_multiple_fields() {
+fn tuple_struct_with_single_generic() {
+    #[derive(New)]
+    struct A<T>(T);
+
+    let res = A::new(1);
+    assert_eq!(res.0, 1);
+}
+
+#[test]
+fn struct_with_single_generic_and_another_field() {
     #[derive(New)]
     struct A<T> {
         x: T,
         y: u32,
     }
+
     let res = A::new(1, 2);
     assert_eq!(res.x, 1);
     assert_eq!(res.y, 2);
 }
 
 #[test]
-fn new_with_generics_with_multiple_generics() {
+fn tuple_struct_with_single_generic_and_another_field() {
     #[derive(New)]
-    struct A<C, B> {
-        x: C,
-        y: B,
+    struct A<T>(T, u32);
+
+    let res = A::new(1, 2);
+    assert_eq!(res.0, 1);
+    assert_eq!(res.1, 2);
+}
+
+#[test]
+fn struct_with_multiple_generics() {
+    #[derive(New)]
+    struct A<X, Y> {
+        x: X,
+        y: Y,
     }
+
     let res = A::new(1u32, 2u64);
     assert_eq!(res.x, 1);
     assert_eq!(res.y, 2);
 }
 
 #[test]
-fn new_with_generics_and_defaults() {
+fn tuple_struct_with_multiple_generics() {
     #[derive(New)]
-    struct A<C, B: Default> {
-        x: C,
+    struct A<X, Y>(X, Y);
+
+    let res = A::new(1u32, 2u64);
+    assert_eq!(res.0, 1);
+    assert_eq!(res.1, 2);
+}
+
+#[test]
+fn struct_with_generics_and_defaults() {
+    #[derive(New)]
+    struct A<X, Y: Default> {
+        x: X,
         #[new(default)]
-        y: B,
+        y: Y,
     }
+
     let res = A::<_, u64>::new(1u32);
     assert_eq!(res.x, 1);
     assert_eq!(res.y, 0);
 }
 
+#[test]
+fn tuple_struct_with_generics_and_defaults() {
+    #[derive(New)]
+    struct A<X, Y: Default>(X, #[new(default)] Y);
+
+    let res = A::<_, u64>::new(1u32);
+    assert_eq!(res.0, 1);
+    assert_eq!(res.1, 0);
+}
 
 #[test]
-fn new_with_lifetimes() {
+fn struct_with_lifetimes() {
     #[derive(New)]
     struct A<'a> {
         x: &'a u64,
     }
+
     let x = 1u64;
     let res = A::new(&x);
     assert_eq!(*res.x, 1);
 }
 
+#[test]
+fn tuple_struct_with_lifetimes() {
+    #[derive(New)]
+    struct A<'a>(&'a u64);
+
+    let x = 1u64;
+    let res = A::new(&x);
+    assert_eq!(*res.0, 1);
+}
 
 #[test]
-fn new_with_lifetimes_and_generics() {
+fn struct_with_lifetimes_and_generics() {
     #[derive(New)]
     struct A<'a, T> {
         x: &'a T,
     }
+
     let x = 1u64;
     let res = A::new(&x);
     assert_eq!(*res.x, 1);
 }
 
+#[test]
+fn tuple_struct_with_lifetimes_and_generics() {
+    #[derive(New)]
+    struct A<'a, T>(&'a T);
+
+    let x = 1u64;
+    let res = A::new(&x);
+    assert_eq!(*res.0, 1);
+}
 
 #[test]
-fn private_field() {
+fn struct_with_static_lifetime() {
+    const X: &str = "abc";
+
+    #[derive(New)]
+    struct A {
+        x: &'static str,
+    }
+
+    let res = A::new(X);
+    assert_eq!(res.x, "abc");
+}
+
+#[test]
+fn tuple_struct_with_static_lifetime() {
+    const X: &str = "abc";
+
+    #[derive(New)]
+    struct A(&'static str);
+
+    let res = A::new(&X);
+    assert_eq!(res.0, "abc");
+}
+
+#[test]
+fn struct_private_new() {
     #[derive(New)]
     #[new(pub = false)]
     struct A<'a, T> {
         x: &'a T,
     }
+
     let x = 1u64;
     let res = A::new(&x);
     assert_eq!(*res.x, 1);
 }
 
+#[test]
+fn tuple_struct_private_new() {
+    #[derive(New)]
+    #[new(pub = false)]
+    struct A<'a, T>(&'a T);
+
+    let x = 1u64;
+    let res = A::new(&x);
+    assert_eq!(*res.0, 1);
+}
 
 #[test]
-fn rename_field() {
+fn struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create")]
     struct A<'a, T> {
         x: &'a T,
     }
+
     let x = 1u64;
     let res = A::create(&x);
     assert_eq!(*res.x, 1);
+}
+
+#[test]
+fn tuple_struct_rename_new() {
+    #[derive(New)]
+    #[new(rename = "create")]
+    struct A<'a, T>(&'a T);
+
+    let x = 1u64;
+    let res = A::create(&x);
+    assert_eq!(*res.0, 1);
 }
