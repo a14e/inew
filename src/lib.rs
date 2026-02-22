@@ -1,11 +1,11 @@
 extern crate proc_macro;
 
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
-    meta::ParseNestedMeta, parse::ParseStream, parse_macro_input, punctuated::Punctuated,
-    token::Comma, Attribute, Data, DataStruct, DeriveInput, Error, Expr, Field, Fields,
-    GenericArgument, Generics, LitBool, LitStr, PathArguments, Token, Type, TypePath, TypeTuple,
+    meta::ParseNestedMeta, parse_macro_input, punctuated::Punctuated, token::Comma, Attribute,
+    Data, DataStruct, DeriveInput, Error, Expr, Field, Fields, Generics, LitBool, LitStr, Token,
+    Type, TypePath, TypeTuple,
 };
 
 // Inspired by a part of SeaORM: https://github.com/SeaQL/sea-orm/blob/master/sea-orm-macros/src/derives/active_model.rs
@@ -31,21 +31,45 @@ fn derive_new_impl(
     attributes: Vec<Attribute>,
 ) -> syn::Result<TokenStream> {
     let Some((fields, is_named)) = extract_fields(&data) else {
-        return Ok(quote_spanned! {
-            ident.span() => compile_error!("you can only derive New on structs");
-        });
+        return Err(syn::Error::new_spanned(
+            ident,
+            "'New' can only be derived for structs",
+        ));
     };
 
     let props = MainProps::from_attributes(&attributes)?;
-    let new_name = props.rename_arg;
+    let new_name = props.rename;
     let public = if props.public { quote!(pub) } else { quote!() };
-    let constant = if props.constant { quote!(const) } else { quote!() };
+    let constant = if props.constant {
+        quote!(const)
+    } else {
+        quote!()
+    };
 
     let fields_with_types_and_settings = collect_field_datas(&fields)?;
+
+    if props.constant {
+        for field in &fields_with_types_and_settings {
+            if field.into {
+                return Err(syn::Error::new_spanned(
+                    &field.name,
+                    "'into' is not allowed in const constructors",
+                ));
+            }
+
+            if matches!(field.default, DefaultValue::Trait) {
+                return Err(syn::Error::new_spanned(
+                    &field.name,
+                    "Default::default() is not allowed in const constructors",
+                ));
+            }
+        }
+    }
+
     let defaults = build_default_initializers(&fields_with_types_and_settings, is_named);
 
     let (constructor_field, pass_value) =
-        build_constructor_arguments(fields_with_types_and_settings, defaults);
+        build_constructor_arguments(fields_with_types_and_settings, defaults, is_named);
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
     let constructor = generate_constructor(
         is_named,
@@ -75,9 +99,14 @@ fn extract_fields(data: &Data) -> Option<(Punctuated<Field, Comma>, bool)> {
     }
 }
 
-fn collect_field_datas(
-    fields: &Punctuated<Field, Comma>,
-) -> syn::Result<Vec<(Ident, Type, DefaultValue)>> {
+struct FieldData {
+    name: Ident,
+    field_type: Type,
+    default: DefaultValue,
+    into: bool,
+}
+
+fn collect_field_datas(fields: &Punctuated<Field, Comma>) -> syn::Result<Vec<FieldData>> {
     fields
         .iter()
         .enumerate()
@@ -85,92 +114,118 @@ fn collect_field_datas(
         .collect()
 }
 
-fn collect_field_data(index: usize, field: &Field) -> syn::Result<(Ident, Type, DefaultValue)> {
+fn collect_field_data(index: usize, field: &Field) -> syn::Result<FieldData> {
     let ident = field
         .ident
         .clone()
         .unwrap_or_else(|| format_ident!("_{}", index));
     let ty = field.ty.clone();
-    let default = read_default_value(field)?;
+    let (default, into) = read_field_settings(field)?;
 
-    Ok((ident, ty, default))
+    Ok(FieldData {
+        name: ident,
+        field_type: ty,
+        default,
+        into,
+    })
 }
 
 fn build_default_initializers(
-    field_specs: &[(Ident, Type, DefaultValue)],
+    field_specs: &[FieldData],
     is_named: bool,
 ) -> Vec<Option<TokenStream>> {
     field_specs
         .iter()
-        .map(|(field_name, _, value)| build_default_initializer(field_name, value, is_named))
+        .map(|field_data| build_default_initializer(field_data, is_named))
         .collect()
 }
 
-fn build_default_initializer(
-    field_name: &Ident,
-    value: &DefaultValue,
-    is_named: bool,
-) -> Option<TokenStream> {
-    match value {
+fn build_default_initializer(field: &FieldData, is_named: bool) -> Option<TokenStream> {
+    let FieldData { name, default, .. } = field;
+
+    if is_named {
+        build_named_initializer(name, default)
+    } else {
+        build_unnamed_initializer(default)
+    }
+}
+
+fn build_named_initializer(name: &Ident, default: &DefaultValue) -> Option<TokenStream> {
+    use DefaultValue::{CustomFunction, PhantomData, Trait, Unit};
+
+    match default {
         DefaultValue::None => None,
-        DefaultValue::Unit => {
-            if is_named {
-                Some(quote!(#field_name: ()))
-            } else {
-                Some(quote!(()))
-            }
-        }
-        DefaultValue::PhantomData => {
-            if is_named {
-                Some(quote!(#field_name: ::core::marker::PhantomData))
-            } else {
-                Some(quote!(::core::marker::PhantomData))
-            }
-        }
-        DefaultValue::Trait => {
-            if is_named {
-                Some(quote!(#field_name: Default::default()))
-            } else {
-                Some(quote!(Default::default()))
-            }
-        }
-        DefaultValue::CustomFunction(function) => {
-            if is_named {
-                Some(quote!(#field_name: (#function)))
-            } else {
-                Some(quote!(#function))
-            }
-        }
+        Unit => Some(quote!(#name: ())),
+        PhantomData => Some(quote!(#name: ::core::marker::PhantomData)),
+        Trait => Some(quote!(#name: Default::default())),
+        CustomFunction(function) => Some(quote!(#name: #function)),
+    }
+}
+
+fn build_unnamed_initializer(default: &DefaultValue) -> Option<TokenStream> {
+    use DefaultValue::{CustomFunction, PhantomData, Trait, Unit};
+
+    match default {
+        DefaultValue::None => None,
+        Unit => Some(quote!(())),
+        PhantomData => Some(quote!(::core::marker::PhantomData)),
+        Trait => Some(quote!(Default::default())),
+        CustomFunction(function) => Some(quote!(#function)),
     }
 }
 
 fn build_constructor_arguments(
-    field_specs: Vec<(Ident, Type, DefaultValue)>,
+    fields: Vec<FieldData>,
     defaults: Vec<Option<TokenStream>>,
+    is_named: bool,
 ) -> (Vec<TokenStream>, Vec<TokenStream>) {
-    let (value_in_constructor, pass_value): (Vec<_>, Vec<_>) = field_specs
+    let (parameter, pass_value): (Vec<_>, Vec<_>) = fields
         .into_iter()
         .zip(defaults)
-        .map(|((field, field_type, _), default)| {
-            build_constructor_argument(field, field_type, default)
-        })
+        .map(|(field, default)| build_constructor_argument(field, default, is_named))
         .unzip();
 
-    let constructor_field = value_in_constructor.into_iter().flatten().collect();
+    let constructor_field = parameter.into_iter().flatten().collect();
 
     (constructor_field, pass_value)
 }
 
 fn build_constructor_argument(
-    field: Ident,
-    field_type: Type,
+    field: FieldData,
     default: Option<TokenStream>,
+    is_named: bool,
 ) -> (Option<TokenStream>, TokenStream) {
+    let FieldData {
+        name,
+        field_type,
+        into,
+        ..
+    } = field;
+
     match default {
         Some(token) => (None, token),
         None => {
-            let field_with_type = quote!(#field: #field_type);
-            (Some(field_with_type), quote!(#field))
+            if into {
+                let parameter = quote!(#name: impl ::core::convert::Into<#field_type>);
+
+                let pass_value = if is_named {
+                    quote!(#name: #name.into())
+                } else {
+                    quote!(#name.into())
+                };
+
+                (Some(parameter), pass_value)
+            } else {
+                let parameter = quote!(#name: #field_type);
+
+                let pass_value = if is_named {
+                    quote!(#name: #name)
+                } else {
+                    quote!(#name)
+                };
+
+                (Some(parameter), pass_value)
+            }
         }
     }
 }
@@ -220,62 +275,102 @@ enum DefaultValue {
     CustomFunction(TokenStream),
 }
 
-fn read_default_value(field: &Field) -> syn::Result<DefaultValue> {
+fn read_field_settings(field: &Field) -> syn::Result<(DefaultValue, bool)> {
     let mut default_value = DefaultValue::None;
+    let mut into = false;
+
+    let mut seen_new_attribute = false;
 
     for attribute in &field.attrs {
         if !attribute.path().is_ident("new") {
             continue;
         }
 
-        let DefaultValue::None = default_value else {
+        if seen_new_attribute {
             return Err(syn::Error::new_spanned(
                 attribute,
-                "Multiple #[new(...)] annotations found. Ensure the field has only one #[new(...)] annotation.",
+                "Multiple #[new(...)] attributes found. Ensure the field has only one #[new(...)] attribute.",
             ));
-        };
+        }
 
-        let component_args = attribute.parse_args_with(component_args_parser);
+        seen_new_attribute = true;
 
-        match component_args {
-            Ok(value) => default_value = value,
-            Err(error) => return Err(error),
+        let mut has_arguments = false;
+
+        attribute.parse_nested_meta(|meta| {
+            has_arguments = true;
+            field_settings_parser(meta, &mut default_value, &mut into)
+        })?;
+
+        if !has_arguments {
+            return Err(syn::Error::new_spanned(
+                attribute,
+                "Expected an argument in #[new(...)] attribute.",
+            ));
         }
     }
 
-    if matches!(&default_value, DefaultValue::None) {
-        if let Type::Tuple(TypeTuple {
-            elems: elements, ..
-        }) = &field.ty
-        {
-            if elements.is_empty() {
-                default_value = DefaultValue::Unit;
-            }
-        } else if is_phantom_data(&field.ty) {
-            default_value = DefaultValue::PhantomData;
-        }
+    if into && !matches!(default_value, DefaultValue::None) {
+        return Err(syn::Error::new_spanned(
+            field,
+            "'into' and 'default' cannot be combined in the same #[new(...)] attribute.",
+        ));
     }
 
-    Ok(default_value)
+    detect_automatic_defaults(&mut default_value, field);
+    Ok((default_value, into))
 }
 
-fn component_args_parser(input: ParseStream) -> syn::Result<DefaultValue> {
-    if input.is_empty() {
-        return Err(input.error("Expected an argument after #[new(...)]."));
+fn detect_automatic_defaults(default_value: &mut DefaultValue, field: &Field) {
+    if !matches!(&default_value, DefaultValue::None) {
+        return;
     }
 
-    let _default_keyword: Token![default] = input.parse()?;
-
-    if !input.peek(Token![=]) {
-        return Ok(DefaultValue::Trait);
+    if is_phantom_data(&field.ty) {
+        *default_value = DefaultValue::PhantomData;
+        return;
     }
 
-    input.parse::<Token![=]>()?;
-    let default_expression: Expr = input.parse()?;
+    let Type::Tuple(TypeTuple { elems, .. }) = &field.ty else {
+        return;
+    };
 
-    Ok(DefaultValue::CustomFunction(
-        default_expression.into_token_stream(),
-    ))
+    if elems.is_empty() {
+        *default_value = DefaultValue::Unit;
+    }
+}
+
+fn field_settings_parser(
+    meta: ParseNestedMeta<'_>,
+    default_value: &mut DefaultValue,
+    into: &mut bool,
+) -> syn::Result<()> {
+    if meta.path.is_ident("into") {
+        if *into {
+            return Err(meta.error("Duplicate 'into' key found in #[new(...)] attribute."));
+        }
+
+        *into = true;
+        return Ok(());
+    }
+
+    if meta.path.is_ident("default") {
+        if !matches!(default_value, DefaultValue::None) {
+            return Err(meta.error("Duplicate 'default' key found in #[new(...)] attribute."));
+        }
+
+        if !meta.input.peek(Token![=]) {
+            *default_value = DefaultValue::Trait;
+            return Ok(());
+        }
+
+        meta.input.parse::<Token![=]>()?;
+        let default_expression: Expr = meta.input.parse()?;
+        *default_value = DefaultValue::CustomFunction(default_expression.into_token_stream());
+        return Ok(());
+    }
+
+    Err(meta.error("Unknown argument found in #[new(...)] attribute."))
 }
 
 fn is_phantom_data(ty: &Type) -> bool {
@@ -283,34 +378,16 @@ fn is_phantom_data(ty: &Type) -> bool {
         return false;
     };
 
-    let Some(last_segment) = &path.segments.last() else {
+    let Some(last) = path.segments.last() else {
         return false;
     };
 
-    if last_segment.ident == "PhantomData" {
-        return true;
-    }
-
-    if last_segment.ident != "marker" {
-        return false;
-    }
-
-    let PathArguments::AngleBracketed(args) = &last_segment.arguments else {
-        return false;
-    };
-
-    for argument in &args.args {
-        if let GenericArgument::Type(inner_type) = argument {
-            return is_phantom_data(inner_type);
-        }
-    }
-
-    false
+    return last.ident == "PhantomData";
 }
 
 struct MainProps {
     pub public: bool,
-    pub rename_arg: Ident,
+    pub rename: Ident,
     pub constant: bool,
 }
 
@@ -320,19 +397,39 @@ impl MainProps {
         let mut rename = None;
         let mut constant = None;
 
+        let mut seen_new_attribute = false;
+
         for attribute in attributes {
             if !attribute.path().is_ident("new") {
                 continue;
             }
 
+            if seen_new_attribute {
+                return Err(syn::Error::new_spanned(
+                    attribute,
+                    "Multiple #[new(...)] attributes found. Ensure only one is used on the struct.",
+                ));
+            }
+
+            seen_new_attribute = true;
+            let mut has_arguments = false;
+
             attribute.parse_nested_meta(|meta| {
+                has_arguments = true;
                 main_props_parser(meta, &mut public, &mut rename, &mut constant)
             })?;
+
+            if !has_arguments {
+                return Err(syn::Error::new_spanned(
+                    attribute,
+                    "Expected at least one argument inside #[new(...)] attribute.",
+                ));
+            }
         }
 
         Ok(Self {
             public: public.unwrap_or(true),
-            rename_arg: rename.unwrap_or_else(|| Ident::new("new", Span::call_site())),
+            rename: rename.unwrap_or_else(|| Ident::new("new", Span::call_site())),
             constant: constant.unwrap_or(false),
         })
     }
@@ -346,7 +443,7 @@ fn main_props_parser(
 ) -> syn::Result<()> {
     if meta.path.is_ident("pub") {
         if public.is_some() {
-            return Err(meta.error("Duplicate 'pub' key found in #[new] attributes."));
+            return Err(meta.error("Duplicate 'pub' key found in #[new(...)] attribute."));
         }
 
         let value = meta.value()?;
@@ -357,7 +454,7 @@ fn main_props_parser(
 
     if meta.path.is_ident("rename") {
         if rename.is_some() {
-            return Err(meta.error("Duplicate 'rename' key found in #[new] attributes."));
+            return Err(meta.error("Duplicate 'rename' key found in #[new(...)] attribute."));
         }
 
         let value = meta.value()?;
@@ -368,7 +465,7 @@ fn main_props_parser(
 
     if meta.path.is_ident("const") {
         if constant.is_some() {
-            return Err(meta.error("Duplicate 'const' key found in #[new] attributes."));
+            return Err(meta.error("Duplicate 'const' key found in #[new(...)] attribute."));
         }
 
         let value = meta.value()?;
@@ -377,7 +474,7 @@ fn main_props_parser(
         return Ok(());
     }
 
-    return Err(meta.error("Unknown argument in #[new] attribute."));
+    return Err(meta.error("Unknown argument in #[new(...)] attribute."));
 }
 
 #[doc = include_str!("../README.md")]

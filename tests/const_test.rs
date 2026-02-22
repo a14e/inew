@@ -15,6 +15,8 @@ Removed from basic_test:
 - tuple_struct_with_all_defaults
 - struct_with_mixed_all_defaults
 - tuple_struct_with_mixed_all_defaults
+- struct_into
+- tuple_struct_into
 - struct_with_default_generics
 - tuple_struct_with_default_generics
  */

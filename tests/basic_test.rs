@@ -413,6 +413,27 @@ fn tuple_struct_with_mixed_all_defaults() {
 }
 
 #[test]
+fn struct_into() {
+    #[derive(New)]
+    struct A {
+        #[new(into)]
+        x: String,
+    }
+
+    let res = A::new("abc");
+    assert_eq!(res.x, "abc");
+}
+
+#[test]
+fn tuple_struct_into() {
+    #[derive(New)]
+    struct A(#[new(into)] String);
+
+    let res = A::new("abc");
+    assert_eq!(res.0, "abc");
+}
+
+#[test]
 fn struct_with_single_generic() {
     #[derive(New)]
     struct A<T> {

@@ -73,7 +73,6 @@ That's it, just add the New annotation
 If you don't want to pass all the fields, you can fill in some of the fields using annotations `#[new(default)]` for
 initialization with `Default::default()` or `#[new(default = my_func_name())]` for initialization by calling
 my_func_name().
-Example of usage
 
 ```rust
 use inew::New;
@@ -98,7 +97,27 @@ fn main() {
 }
 ```
 
-The #[new(default = ...)] attribute can take any valid Rust expression, such as 1 + 1 or vec![1], as its argument.
+The `#[new(default = ...)]` attribute can take any valid Rust expression, such as `1 + 1` or `vec![1]`, as its argument.
+
+### Into arguments
+
+It's often more convenient to make the parameters accept `impl Into<T>` instead of `T`, which makes them automatically call `into()` inside. This can be done with `#[new(into)]`.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+struct MyStruct {
+    #[new(into)]
+    name: String,
+}
+
+fn main() {
+    let s = MyStruct::new("John");
+}
+```
+
+A field's `#[new(...)]` attribute cannot be marked with `#[new(into)]` and `#[new(default)]` at the same time, since they are incompatible by design.
 
 ### Custom names and privacy
 
@@ -239,12 +258,13 @@ fn main() {
 }
 ```
 
-Limitations for default values in constant constructors:
+Limitations of constant constructors:
 
 - Trait defaults like `#[new(default)]` attribute are not supported, since `Default` is not yet stable as a `const` trait.
 - Macro defaults like `#[new(default = my_macro!())]` are supported as long as they expand to a constant expression, so any macro that does allocation is not supported.
 - Function defaults like `#[new(default = my_function())]` are supported only if the function is `const`.
 - Any struct with generics cannot have defaults of any kind.
+- Since the `Into` trait is not a `const` trait, the `#[new(into)]` attribute is not supported.
 
 ### Unit and PhantomData
 
@@ -290,6 +310,8 @@ Below is a list of differences in the table.
 | Feature                                 | INew | derive-new |
 |-----------------------------------------|------|------------|
 | Default values support                  | Yes  | Yes        |
+| Into arguments support                  | Yes  | Yes        |
+| Into iter arguments support             | No   | Yes        |
 | Generics and lifetimes support          | Yes  | Yes        |
 | Enum support                            | No   | Yes        |
 | Constructor privacy settings            | Yes  | No         |
