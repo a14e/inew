@@ -99,7 +99,11 @@ fn main() {
 
 The `#[new(default = ...)]` attribute can take any valid Rust expression, such as `1 + 1` or `vec![1]`, as its argument.
 
-### Into arguments
+### Into trait helpers
+
+Passed non-default constructor arguments can be automatically converted by specifying so, thanks to the `Into` trait.
+
+#### Into arguments
 
 It's often more convenient to make the parameters accept `impl Into<T>` instead of `T`, which makes them automatically call `into()` inside. This can be done with `#[new(into)]`.
 
@@ -117,7 +121,49 @@ fn main() {
 }
 ```
 
-A field's `#[new(...)]` attribute cannot be marked with `#[new(into)]` and `#[new(default)]` at the same time, since they are incompatible by design.
+#### Into iterators
+
+Another common case is making constructors accept "any" iterator as an argument by taking `impl IntoIterator<Item = T>` and calling `into_iter().collect()` inside. This can be done with `#[new(into_iter)]`, which can automatically infer the type of the iterator elements for simple cases.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+struct MyStruct {
+    #[new(into_iter)]
+    x: Vec<u32>,
+}
+
+fn main() {
+    // All of these are valid
+    let s = MyStruct::new(Some(5));
+    let t = MyStruct::new(None);
+    let u = MyStruct::new([1, 2, 3]);
+}
+```
+
+For more complex cases like type aliases, you can use `#[new(into_iter = T)]`, where `T` is the type of the iterator items.
+
+```rust
+use inew::New;
+
+type MyVector = Vec<u32>;
+
+#[derive(New)]
+struct MyStruct {
+    #[new(into_iter = u32)]
+    x: MyVector,
+}
+
+fn main() {
+    // All of these are valid
+    let s = MyStruct::new(Some(5));
+    let t = MyStruct::new(None);
+    let u = MyStruct::new([1, 2, 3]);
+}
+```
+
+A field's `#[new(...)]` attribute can only have one of the attributes `default` `into`, `into_iter`, since they are incompatible with eachother by design.
 
 ### Custom names and privacy
 
@@ -311,7 +357,7 @@ Below is a list of differences in the table.
 |-----------------------------------------|------|------------|
 | Default values support                  | Yes  | Yes        |
 | Into arguments support                  | Yes  | Yes        |
-| Into iter arguments support             | No   | Yes        |
+| Into iter arguments support             | Yes  | Yes        |
 | Generics and lifetimes support          | Yes  | Yes        |
 | Enum support                            | No   | Yes        |
 | Constructor privacy settings            | Yes  | No         |

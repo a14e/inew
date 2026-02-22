@@ -1,26 +1,6 @@
 use inew::New;
 use std::marker::PhantomData;
 
-/*
-Removed from basic_test:
-- struct_with_default
-- tuple_struct_with_default
-- struct_with_default_allocation_macro
-- tuple_struct_with_default_allocation_macro
-- struct_with_default_function
-- tuple_struct_with_default_function
-- struct_with_nested_default_function
-- tuple_struct_with_nested_default_function
-- struct_with_all_defaults
-- tuple_struct_with_all_defaults
-- struct_with_mixed_all_defaults
-- tuple_struct_with_mixed_all_defaults
-- struct_into
-- tuple_struct_into
-- struct_with_default_generics
-- tuple_struct_with_default_generics
- */
-
 #[test]
 fn unit_like_struct_with_braces() {
     #[derive(Debug, PartialEq, New)]
@@ -86,6 +66,32 @@ fn tuple_struct_multiple_fields() {
     const RES: A = A::new(2, 3);
     assert_eq!(RES.0, 2);
     assert_eq!(RES.1, 3);
+}
+
+#[test]
+fn struct_type_alias() {
+    type X = u32;
+
+    #[derive(New)]
+    #[new(const = true)]
+    struct A {
+        x: X,
+    }
+
+    const RES: A = A::new(2);
+    assert_eq!(RES.x, 2);
+}
+
+#[test]
+fn tuple_struct_type_alias() {
+    type X = u32;
+
+    #[derive(New)]
+    #[new(const = true)]
+    struct A(X);
+
+    const RES: A = A::new(2);
+    assert_eq!(RES.0, 2);
 }
 
 #[test]
@@ -338,6 +344,41 @@ fn tuple_struct_with_multiple_generics() {
     const RES: A<u32, u64> = A::new(1u32, 2u64);
     assert_eq!(RES.0, 1);
     assert_eq!(RES.1, 2);
+}
+
+#[test]
+fn struct_with_nested_generics() {
+    #[derive(New)]
+    #[new(const = true)]
+    struct X<Y, Z> {
+        y: Y,
+        z: Z,
+    }
+
+    #[derive(New)]
+    #[new(const = true)]
+    struct A<Y, Z> {
+        x: X<Y, Z>,
+    }
+
+    const RES: A<u32, &str> = A::new(X::new(1, "z"));
+    assert_eq!(RES.x.y, 1);
+    assert_eq!(RES.x.z, "z");
+}
+
+#[test]
+fn tuple_struct_with_nested_generics() {
+    #[derive(New)]
+    #[new(const = true)]
+    struct X<Y, Z>(Y, Z);
+
+    #[derive(New)]
+    #[new(const = true)]
+    struct A<Y, Z>(X<Y, Z>);
+
+    const RES: A<u32, &str> = A::new(X::new(1, "z"));
+    assert_eq!(RES.0 .0, 1);
+    assert_eq!(RES.0 .1, "z");
 }
 
 #[test]
