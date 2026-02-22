@@ -6,11 +6,10 @@ rust-version = "1.80.0"
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
 readme = "README.md"
 keywords = ["builder", "macro", "derive", "constructor"]
-categories = [ "rust-patterns"]
+categories = ["rust-patterns"]
 repository = "https://github.com/a14e/inew"
-description = "Macroses for constructor generation"
+description = "Macros for constructor generation"
 license = "MIT OR Apache-2.0"
-
 
 [lib]
 proc-macro = true
@@ -24,4 +23,3 @@ proc-macro2 = "1.0.103"
 [features]
 default = ["std"]
 std = []
-
