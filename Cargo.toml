@@ -1,6 +1,6 @@
 [package]
 name = "inew"
-version = "0.2.3"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.80.0"
 authors = ["Borisenko Andrei m0hct3r@gmail.com"]
@@ -15,9 +15,9 @@ license = "MIT OR Apache-2.0"
 proc-macro = true
 
 [dependencies]
-syn = { version = "2.0.108", features = ["full"] }
-quote = "1.0.41"
-proc-macro2 = "1.0.103"
+syn = { version = "2.0.117", features = ["full"] }
+quote = "1.0.44"
+proc-macro2 = "1.0.106"
 
 # no_std support https://github.com/nrc/derive-new
 [features]
