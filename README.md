@@ -21,8 +21,8 @@ The library requires a minimum Rust version of `1.80.0`.
 
 ## Usage examples
 
-Suppose you have a structure and constructor, and we want to make a constructor for it.
-And it looks like this
+Suppose you have a struct and you want to make a constructor for it.
+A common implementation it looks like this:
 
 ```rust
 struct MyStruct {
@@ -50,8 +50,7 @@ impl MyStruct {
 }
 ```
 
-But everything here is very obvious, all fields and types are known to compiler. Therefore, we can hand over constructor
-generation to a macro
+But everything here is very obvious, all fields and types are known to compiler, and they follow a predictable pattern. Therefore, we can hand over constructor generation to a macro.
 
 ```rust
 use inew::New;
@@ -66,7 +65,30 @@ struct MyStruct {
 }
 ```
 
-That's it, just add the New annotation
+That's it, just add the `New` derive macro.
+
+### Enums
+
+You can also generate constructors for enums, which creates one for each variant.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+enum MyEnum {
+    None,
+    Point { x: u32, y: u32 },
+    Color(u8, u8, u8),
+}
+
+fn main() {
+    let n = MyEnum::new_none();
+    let p = MyEnum::new_point(1, 2);
+    let c = MyEnum::new_color(1, 2, 3);
+}
+```
+
+Most of the examples below will use structs, but all the features shown in them are available for enums as well.
 
 ### Default fields and custom functions for generating fields
 
@@ -171,6 +193,8 @@ It is also possible to configure the privacy and rename the constructor using at
 
 #### Custom names
 
+For structs, passing a custom constructo name can be done with `#[new(rename = ...)]`, which replaces the default `new`.
+
 ```rust
 use inew::New;
 
@@ -182,6 +206,26 @@ struct MyStruct {
 
 fn main() {
     let s = MyStruct::create(1);
+}
+```
+
+For enums, the default constructor name `new` is used as a prefix followed by the variant name in snake_case, so adding `#[new(rename = ...)]` will replace the prefix instead of the full name.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+#[new(rename = "create")]
+enum MyEnum {
+    First,
+    Second { x: u32 },
+    Third (u32),
+}
+
+fn main() {
+    let f = MyEnum::create_first();
+    let s = MyEnum::create_second(2);
+    let t = MyEnum::create_third(3);
 }
 ```
 

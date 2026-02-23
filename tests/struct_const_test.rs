@@ -2,7 +2,7 @@ use inew::New;
 use std::marker::PhantomData;
 
 #[test]
-fn unit_like_struct_with_braces() {
+fn const_unit_like_struct_with_braces() {
     #[derive(Debug, PartialEq, New)]
     #[new(const = true)]
     struct A;
@@ -12,7 +12,7 @@ fn unit_like_struct_with_braces() {
 }
 
 #[test]
-fn unit_like_struct_without_braces() {
+fn const_unit_like_struct_without_braces() {
     #[derive(Debug, PartialEq, New)]
     #[new(const = true)]
     struct A;
@@ -22,7 +22,7 @@ fn unit_like_struct_without_braces() {
 }
 
 #[test]
-fn struct_single_field() {
+fn const_struct_single_field() {
     #[derive(New)]
     #[new(const = true)]
     struct A {
@@ -34,7 +34,7 @@ fn struct_single_field() {
 }
 
 #[test]
-fn tuple_struct_single_field() {
+fn const_tuple_struct_single_field() {
     #[derive(New)]
     #[new(const = true)]
     struct A(u32);
@@ -44,7 +44,7 @@ fn tuple_struct_single_field() {
 }
 
 #[test]
-fn struct_multiple_fields() {
+fn const_struct_multiple_fields() {
     #[derive(New)]
     #[new(const = true)]
     struct A {
@@ -58,7 +58,7 @@ fn struct_multiple_fields() {
 }
 
 #[test]
-fn tuple_struct_multiple_fields() {
+fn const_tuple_struct_multiple_fields() {
     #[derive(New)]
     #[new(const = true)]
     struct A(u32, u64);
@@ -69,7 +69,7 @@ fn tuple_struct_multiple_fields() {
 }
 
 #[test]
-fn struct_type_alias() {
+fn const_struct_type_alias() {
     type X = u32;
 
     #[derive(New)]
@@ -83,7 +83,7 @@ fn struct_type_alias() {
 }
 
 #[test]
-fn tuple_struct_type_alias() {
+fn const_tuple_struct_type_alias() {
     type X = u32;
 
     #[derive(New)]
@@ -95,7 +95,7 @@ fn tuple_struct_type_alias() {
 }
 
 #[test]
-fn struct_unit_auto_default() {
+fn const_struct_unit_auto_default() {
     #[derive(New)]
     #[new(const = true)]
     struct A {
@@ -107,7 +107,7 @@ fn struct_unit_auto_default() {
 }
 
 #[test]
-fn tuple_struct_unit_auto_default() {
+fn const_tuple_struct_unit_auto_default() {
     #[derive(New)]
     #[new(const = true)]
     struct A(());
@@ -117,7 +117,7 @@ fn tuple_struct_unit_auto_default() {
 }
 
 #[test]
-fn struct_phantom_data_auto_default() {
+fn const_struct_phantom_data_auto_default() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T> {
@@ -129,7 +129,7 @@ fn struct_phantom_data_auto_default() {
 }
 
 #[test]
-fn tuple_struct_phantom_data_auto_default() {
+fn const_tuple_struct_phantom_data_auto_default() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T>(PhantomData<T>);
@@ -139,7 +139,7 @@ fn tuple_struct_phantom_data_auto_default() {
 }
 
 #[test]
-fn struct_with_default_expression() {
+fn const_struct_with_default_expression() {
     #[derive(New)]
     #[new(const = true)]
     struct A {
@@ -154,7 +154,7 @@ fn struct_with_default_expression() {
 }
 
 #[test]
-fn tuple_struct_with_default_expression() {
+fn const_tuple_struct_with_default_expression() {
     #[derive(New)]
     #[new(const = true)]
     struct A(u32, #[new(default = 1 + 2)] u64);
@@ -165,7 +165,7 @@ fn tuple_struct_with_default_expression() {
 }
 
 #[test]
-fn struct_with_default_custom_macro() {
+fn const_struct_with_default_custom_macro() {
     macro_rules! custom_macro {
         () => {
             7
@@ -186,7 +186,7 @@ fn struct_with_default_custom_macro() {
 }
 
 #[test]
-fn tuple_struct_with_default_custom_macro() {
+fn const_tuple_struct_with_default_custom_macro() {
     macro_rules! custom_macro {
         () => {
             7
@@ -203,7 +203,7 @@ fn tuple_struct_with_default_custom_macro() {
 }
 
 #[test]
-fn struct_with_default_const_function() {
+fn const_struct_with_default_const_function() {
     const fn custom_default() -> u64 {
         3
     }
@@ -222,7 +222,7 @@ fn struct_with_default_const_function() {
 }
 
 #[test]
-fn tuple_struct_with_default_const_function() {
+fn const_tuple_struct_with_default_const_function() {
     const fn custom_default() -> u64 {
         3
     }
@@ -237,7 +237,7 @@ fn tuple_struct_with_default_const_function() {
 }
 
 #[test]
-fn struct_with_nested_default_const_function() {
+fn const_struct_with_nested_default_const_function() {
     mod nested {
         pub const fn custom_default() -> u64 {
             3
@@ -258,7 +258,7 @@ fn struct_with_nested_default_const_function() {
 }
 
 #[test]
-fn tuple_struct_with_nested_default_const_function() {
+fn const_tuple_struct_with_nested_default_const_function() {
     mod nested {
         pub const fn custom_default() -> u64 {
             3
@@ -275,7 +275,7 @@ fn tuple_struct_with_nested_default_const_function() {
 }
 
 #[test]
-fn struct_with_single_generic() {
+fn const_struct_with_single_generic() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T> {
@@ -287,7 +287,7 @@ fn struct_with_single_generic() {
 }
 
 #[test]
-fn tuple_struct_with_single_generic() {
+fn const_tuple_struct_with_single_generic() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T>(T);
@@ -297,7 +297,7 @@ fn tuple_struct_with_single_generic() {
 }
 
 #[test]
-fn struct_with_single_generic_and_another_field() {
+fn const_struct_with_single_generic_and_another_field() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T> {
@@ -311,7 +311,7 @@ fn struct_with_single_generic_and_another_field() {
 }
 
 #[test]
-fn tuple_struct_with_single_generic_and_another_field() {
+fn const_tuple_struct_with_single_generic_and_another_field() {
     #[derive(New)]
     #[new(const = true)]
     struct A<T>(T, u32);
@@ -322,7 +322,7 @@ fn tuple_struct_with_single_generic_and_another_field() {
 }
 
 #[test]
-fn struct_with_multiple_generics() {
+fn const_struct_with_multiple_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct A<X, Y> {
@@ -336,7 +336,7 @@ fn struct_with_multiple_generics() {
 }
 
 #[test]
-fn tuple_struct_with_multiple_generics() {
+fn const_tuple_struct_with_multiple_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct A<X, Y>(X, Y);
@@ -347,7 +347,7 @@ fn tuple_struct_with_multiple_generics() {
 }
 
 #[test]
-fn struct_with_nested_generics() {
+fn const_struct_with_nested_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct X<Y, Z> {
@@ -367,7 +367,7 @@ fn struct_with_nested_generics() {
 }
 
 #[test]
-fn tuple_struct_with_nested_generics() {
+fn const_tuple_struct_with_nested_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct X<Y, Z>(Y, Z);
@@ -382,7 +382,7 @@ fn tuple_struct_with_nested_generics() {
 }
 
 #[test]
-fn struct_with_lifetimes() {
+fn const_struct_with_lifetimes() {
     #[derive(New)]
     #[new(const = true)]
     struct A<'a> {
@@ -395,7 +395,7 @@ fn struct_with_lifetimes() {
 }
 
 #[test]
-fn tuple_struct_with_lifetimes() {
+fn const_tuple_struct_with_lifetimes() {
     #[derive(New)]
     #[new(const = true)]
     struct A<'a>(&'a u64);
@@ -406,7 +406,7 @@ fn tuple_struct_with_lifetimes() {
 }
 
 #[test]
-fn struct_with_lifetimes_and_generics() {
+fn const_struct_with_lifetimes_and_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct A<'a, T> {
@@ -419,7 +419,7 @@ fn struct_with_lifetimes_and_generics() {
 }
 
 #[test]
-fn tuple_struct_with_lifetimes_and_generics() {
+fn const_tuple_struct_with_lifetimes_and_generics() {
     #[derive(New)]
     #[new(const = true)]
     struct A<'a, T>(&'a T);
@@ -430,7 +430,7 @@ fn tuple_struct_with_lifetimes_and_generics() {
 }
 
 #[test]
-fn struct_with_static_lifetime() {
+fn const_struct_with_static_lifetime() {
     const X: &str = "abc";
 
     #[derive(New)]
@@ -444,7 +444,7 @@ fn struct_with_static_lifetime() {
 }
 
 #[test]
-fn tuple_struct_with_static_lifetime() {
+fn const_tuple_struct_with_static_lifetime() {
     const X: &str = "abc";
 
     #[derive(New)]
@@ -456,7 +456,7 @@ fn tuple_struct_with_static_lifetime() {
 }
 
 #[test]
-fn struct_private_new() {
+fn const_struct_private_new() {
     #[derive(New)]
     #[new(pub = false, const = true)]
     struct A<'a, T> {
@@ -469,7 +469,7 @@ fn struct_private_new() {
 }
 
 #[test]
-fn tuple_struct_private_new() {
+fn const_tuple_struct_private_new() {
     #[derive(New)]
     #[new(pub = false, const = true)]
     struct A<'a, T>(&'a T);
@@ -480,7 +480,7 @@ fn tuple_struct_private_new() {
 }
 
 #[test]
-fn struct_rename_new() {
+fn const_struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create", const = true)]
     struct A<'a, T> {
@@ -493,7 +493,7 @@ fn struct_rename_new() {
 }
 
 #[test]
-fn tuple_struct_rename_new() {
+fn const_tuple_struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create", const = true)]
     struct A<'a, T>(&'a T);
