@@ -120,7 +120,7 @@ fn const_enum_mixed_variants() {
     enum MyEnum {
         I,
         J { x: u32 },
-        K (u64, u64),
+        K(u64, u64),
         L { x: u8, y: u8 },
         M(u16, u16, u16, bool),
     }
@@ -132,7 +132,7 @@ fn const_enum_mixed_variants() {
     assert_eq!(RES2, MyEnum::J { x: 1 });
 
     const RES3: MyEnum = MyEnum::new_k(1, 2);
-    assert_eq!(RES3, MyEnum::K (1, 2));
+    assert_eq!(RES3, MyEnum::K(1, 2));
 
     const RES4: MyEnum = MyEnum::new_l(1, 2);
     assert_eq!(RES4, MyEnum::L { x: 1, y: 2 });
@@ -530,52 +530,116 @@ fn const_tuple_enum_with_static_lifetime() {
 fn const_enum_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false, const = true)]
-    enum A<'a, T> {
-        I { x: &'a T },
+    enum A {
+        I { x: u32 },
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::new_i(&X);
-    assert_eq!(RES, A::I { x: &X });
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I { x: 1 });
 }
 
 #[test]
 fn const_tuple_enum_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false, const = true)]
-    enum A<'a, T> {
-        I(&'a T),
+    enum A {
+        I(u32),
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::new_i(&X);
-    assert_eq!(RES, A::I(&X));
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I(1));
+}
+
+#[test]
+fn const_enum_custom_visibility() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "crate", const = true)]
+    enum A {
+        I { x: u32 },
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(Debug, PartialEq, New)]
+        #[new(pub = "super", const = true)]
+        pub enum B {
+            I { x: u32 },
+        }
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "self", const = true)]
+    enum C {
+        I { x: u32 },
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I { x: 1 });
+
+    const RES2: nested::B = nested::B::new_i(2);
+    assert_eq!(RES2, nested::B::I { x: 2 });
+
+    const RES3: C = C::new_i(3);
+    assert_eq!(RES3, C::I { x: 3 });
+}
+
+#[test]
+fn const_tuple_enum_custom_visibility() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "crate", const = true)]
+    enum A {
+        I(u32),
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(Debug, PartialEq, New)]
+        #[new(pub = "super", const = true)]
+        pub enum B {
+            I(u32),
+        }
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "self", const = true)]
+    enum C {
+        I(u32),
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I(1));
+
+    const RES2: nested::B = nested::B::new_i(2);
+    assert_eq!(RES2, nested::B::I(2));
+
+    const RES3: C = C::new_i(3);
+    assert_eq!(RES3, C::I(3));
 }
 
 #[test]
 fn const_enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(rename = "create", const = true)]
-    enum A<'a, T> {
-        I { x: &'a T },
+    enum A {
+        I { x: u32 },
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::create_i(&X);
-    assert_eq!(RES, A::I { x: &X });
+    const RES: A = A::create_i(1);
+    assert_eq!(RES, A::I { x: 1 });
 }
 
 #[test]
 fn const_tuple_enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(rename = "create", const = true)]
-    enum A<'a, T> {
-        I(&'a T),
+    enum A {
+        I(u32),
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::create_i(&X);
-    assert_eq!(RES, A::I(&X));
+    const RES: A = A::create_i(1);
+    assert_eq!(RES, A::I(1));
 }
 
 #[test]
@@ -625,7 +689,6 @@ fn const_tuple_enum_constructor_name() {
     const RES4: A = A::new_xyz(4);
     assert_eq!(RES4, A::XYZ(4));
 }
-
 
 #[test]
 fn enum_constructor_rename_new() {

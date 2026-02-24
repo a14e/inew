@@ -2,7 +2,7 @@ use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
     meta::ParseNestedMeta, punctuated::Punctuated, token::Comma, Attribute, Error, Expr, Field,
-    Fields, GenericArgument, LitBool, LitStr, PathArguments, Token, Type, TypePath, TypeTuple,
+    Fields, GenericArgument, Lit, LitBool, LitStr, PathArguments, Token, Type, TypePath, TypeTuple,
 };
 
 pub(crate) struct MainProperties {
@@ -23,6 +23,15 @@ pub(crate) enum VariantShape {
     Unit,
     Tuple,
     Struct,
+}
+
+enum Visibility {
+    Inherit,
+    Public,
+    Crate,
+    Super,
+    InSelf,
+    In(TokenStream),
 }
 
 struct FieldData {
@@ -47,7 +56,7 @@ enum DefaultValue {
 }
 
 pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<MainProperties> {
-    let mut public = None;
+    let mut visibility: Option<Visibility> = None;
     let mut rename = None;
     let mut constant = None;
 
@@ -70,7 +79,7 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
 
         attribute.parse_nested_meta(|meta| {
             has_arguments = true;
-            main_properties_parser(meta, &mut public, &mut rename, &mut constant)
+            main_properties_parser(meta, &mut visibility, &mut rename, &mut constant)
         })?;
 
         if !has_arguments {
@@ -81,12 +90,11 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
         }
     }
 
-    let visibility = if public.unwrap_or(true) {
-        quote!(pub)
-    } else {
-        quote!()
-    };
+    let visibility = visibility.unwrap_or(Visibility::Public);
+    let visibility_token = create_visibility_token(&visibility);
+
     let constructor_name = rename.unwrap_or_else(|| Ident::new("new", Span::call_site()));
+
     let constant_result = constant.unwrap_or(false);
     let constant_keyword = if constant_result {
         quote!(const)
@@ -95,7 +103,7 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
     };
 
     Ok(MainProperties {
-        visibility,
+        visibility: visibility_token,
         constructor_name,
         constant: constant_result,
         constant_keyword,
@@ -104,18 +112,63 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
 
 fn main_properties_parser(
     meta: ParseNestedMeta<'_>,
-    public: &mut Option<bool>,
+    visibility: &mut Option<Visibility>,
     rename: &mut Option<Ident>,
     constant: &mut Option<bool>,
 ) -> syn::Result<()> {
     if meta.path.is_ident("pub") {
-        if public.is_some() {
+        if visibility.is_some() {
             return Err(meta.error("Duplicate 'pub' key found in #[new(...)] attribute."));
         }
 
         let value = meta.value()?;
-        let lit: LitBool = value.parse()?;
-        *public = Some(lit.value);
+        let lit = value.parse::<Lit>()?;
+
+        match lit {
+            Lit::Bool(lit_bool) => {
+                *visibility = Some(if lit_bool.value {
+                    Visibility::Public
+                } else {
+                    Visibility::Inherit
+                });
+            }
+            Lit::Str(lit_str) => {
+                *visibility = match lit_str.value().as_str() {
+                    "crate" => Some(Visibility::Crate),
+                    "super" => Some(Visibility::Super),
+                    "self" => Some(Visibility::InSelf),
+                    other => {
+                        return Err(Error::new_spanned(
+                            lit_str,
+                            format!("Invalid 'pub' value in #[new(...)]. Expected 'crate', 'super' or 'self', found '{}'", other),
+                        ));
+                    }
+                };
+            }
+            _ => {
+                return Err(Error::new_spanned(
+                    lit,
+                    "Expected boolean or string literal for 'pub'",
+                ));
+            }
+        }
+
+        return Ok(());
+    }
+
+    if meta.path.is_ident("pub_in") {
+        if visibility.is_some() {
+            return Err(meta.error("Cannot combine 'pub' and 'pub_in' in #[new(...)]"));
+        }
+
+        let value = meta.value()?;
+        let lit_str = value.parse::<LitStr>()?;
+
+        let path = lit_str.value().parse::<TokenStream>().map_err(|_| {
+            Error::new_spanned(&lit_str, "Invalid path for 'pub_in' in #[new(...)]")
+        })?;
+
+        *visibility = Some(Visibility::In(path.into_token_stream()));
         return Ok(());
     }
 
@@ -125,8 +178,8 @@ fn main_properties_parser(
         }
 
         let value = meta.value()?;
-        let lit: LitStr = value.parse()?;
-        *rename = Some(Ident::new(&lit.value(), lit.span()));
+        let lit_str = value.parse::<LitStr>()?;
+        *rename = Some(Ident::new(&lit_str.value(), lit_str.span()));
         return Ok(());
     }
 
@@ -136,12 +189,25 @@ fn main_properties_parser(
         }
 
         let value = meta.value()?;
-        let lit: LitBool = value.parse()?;
-        *constant = Some(lit.value);
+        let lit_bool = value.parse::<LitBool>()?;
+        *constant = Some(lit_bool.value);
         return Ok(());
     }
 
     return Err(meta.error("Unknown argument in #[new(...)] attribute."));
+}
+
+fn create_visibility_token(visibility: &Visibility) -> TokenStream {
+    use Visibility::*;
+
+    match visibility {
+        Inherit => quote!(),
+        Public => quote!(pub),
+        Crate => quote!(pub(crate)),
+        Super => quote!(pub(super)),
+        InSelf => quote!(pub(self)),
+        In(path) => quote!(pub(in #path)),
+    }
 }
 
 pub(crate) fn build_constructor_plan(
@@ -279,7 +345,7 @@ fn field_settings_parser(
         }
 
         meta.input.parse::<Token![=]>()?;
-        let default_expression: Expr = meta.input.parse()?;
+        let default_expression = meta.input.parse::<Expr>()?;
         *default_value = DefaultValue::CustomFunction(default_expression.into_token_stream());
         return Ok(());
     }
@@ -304,7 +370,7 @@ fn field_settings_parser(
         }
 
         meta.input.parse::<Token![=]>()?;
-        let ty: Type = meta.input.parse()?;
+        let ty = meta.input.parse::<Type>()?;
 
         *into_iter = Some(IntoIterKind::Explicit(ty));
         return Ok(());
@@ -583,4 +649,3 @@ pub(crate) fn generate_constructor(
         }
     }
 }
-

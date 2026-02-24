@@ -110,7 +110,7 @@ fn enum_mixed_variants() {
     enum MyEnum {
         I,
         J { x: u32 },
-        K (u64, u64),
+        K(u64, u64),
         L { x: u8, y: u8 },
         M(u16, u16, u16, bool),
     }
@@ -122,7 +122,7 @@ fn enum_mixed_variants() {
     assert_eq!(res2, MyEnum::J { x: 1 });
 
     let res3 = MyEnum::new_k(1, 2);
-    assert_eq!(res3, MyEnum::K (1, 2));
+    assert_eq!(res3, MyEnum::K(1, 2));
 
     let res4 = MyEnum::new_l(1, 2);
     assert_eq!(res4, MyEnum::L { x: 1, y: 2 });
@@ -862,52 +862,116 @@ fn tuple_enum_with_static_lifetime() {
 fn enum_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false)]
-    enum A<'a, T> {
-        I { x: &'a T },
+    enum A {
+        I { x: u32 },
     }
 
-    let x = 1u64;
-    let res = A::new_i(&x);
-    assert_eq!(res, A::I { x: &x });
+    let res = A::new_i(1);
+    assert_eq!(res, A::I { x: 1 });
 }
 
 #[test]
 fn tuple_enum_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false)]
-    enum A<'a, T> {
-        I(&'a T),
+    enum A {
+        I(u32),
     }
 
-    let x = 1u64;
-    let res = A::new_i(&x);
-    assert_eq!(res, A::I(&x));
+    let res = A::new_i(1);
+    assert_eq!(res, A::I(1));
+}
+
+#[test]
+fn enum_custom_visibility() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "crate")]
+    enum A {
+        I { x: u32 },
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(Debug, PartialEq, New)]
+        #[new(pub = "super")]
+        pub enum B {
+            I { x: u32 },
+        }
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "self")]
+    enum C {
+        I { x: u32 },
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I { x: 1 });
+
+    let res2 = nested::B::new_i(2);
+    assert_eq!(res2, nested::B::I { x: 2 });
+
+    let res3 = C::new_i(3);
+    assert_eq!(res3, C::I { x: 3 });
+}
+
+#[test]
+fn tuple_enum_custom_visibility() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "crate")]
+    enum A {
+        I(u32),
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(Debug, PartialEq, New)]
+        #[new(pub = "super")]
+        pub enum B {
+            I(u32),
+        }
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = "self")]
+    enum C {
+        I(u32),
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I(1));
+
+    let res2 = nested::B::new_i(2);
+    assert_eq!(res2, nested::B::I(2));
+
+    let res3 = C::new_i(3);
+    assert_eq!(res3, C::I(3));
 }
 
 #[test]
 fn enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(rename = "create")]
-    enum A<'a, T> {
-        I { x: &'a T },
+    enum A {
+        I { x: u32 },
     }
 
-    let x = 1u64;
-    let res = A::create_i(&x);
-    assert_eq!(res, A::I { x: &x });
+    let res = A::create_i(1);
+    assert_eq!(res, A::I { x: 1 });
 }
 
 #[test]
 fn tuple_enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(rename = "create")]
-    enum A<'a, T> {
-        I(&'a T),
+    enum A {
+        I(u32),
     }
 
-    let x = 1u64;
-    let res = A::create_i(&x);
-    assert_eq!(res, A::I(&x));
+    let res = A::create_i(1);
+    assert_eq!(res, A::I(1));
 }
 
 #[test]

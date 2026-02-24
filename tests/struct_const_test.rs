@@ -459,46 +459,105 @@ fn const_tuple_struct_with_static_lifetime() {
 fn const_struct_private_new() {
     #[derive(New)]
     #[new(pub = false, const = true)]
-    struct A<'a, T> {
-        x: &'a T,
+    struct A {
+        x: u32,
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::new(&X);
-    assert_eq!(*RES.x, 1);
+    const RES: A = A::new(1);
+    assert_eq!(RES.x, 1);
 }
 
 #[test]
 fn const_tuple_struct_private_new() {
     #[derive(New)]
     #[new(pub = false, const = true)]
-    struct A<'a, T>(&'a T);
+    struct A(u32);
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::new(&X);
-    assert_eq!(*RES.0, 1);
+    const RES: A = A::new(1);
+    assert_eq!(RES.0, 1);
+}
+
+
+#[test]
+fn const_struct_custom_visibility() {
+    #[derive(New)]
+    #[new(pub = "crate", const = true)]
+    struct A {
+        x: u32,
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(New)]
+        #[new(pub = "super", const = true)]
+        pub struct B {
+            pub x: u32,
+        }
+    }
+
+    #[derive(New)]
+    #[new(pub = "self", const = true)]
+    struct C {
+        x: u32,
+    }
+
+    const RES: A = A::new(1);
+    assert_eq!(RES.x, 1);
+
+    const RES2: nested::B = nested::B::new(2);
+    assert_eq!(RES2.x, 2);
+
+    const RES3: C = C::new(3);
+    assert_eq!(RES3.x, 3);
+}
+
+#[test]
+fn const_tuple_struct_custom_visibility() {
+    #[derive(New)]
+    #[new(pub = "crate", const = true)]
+    struct A(u32);
+
+    mod nested {
+        use super::*;
+
+        #[derive(New)]
+        #[new(pub = "super", const = true)]
+        pub struct B(pub u32);
+    }
+
+    #[derive(New)]
+    #[new(pub = "self", const = true)]
+    struct C(u32);
+
+    const RES: A = A::new(1);
+    assert_eq!(RES.0, 1);
+
+    const RES2: nested::B = nested::B::new(2);
+    assert_eq!(RES2.0, 2);
+
+    const RES3: C = C::new(3);
+    assert_eq!(RES3.0, 3);
 }
 
 #[test]
 fn const_struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create", const = true)]
-    struct A<'a, T> {
-        x: &'a T,
+    struct A {
+        x: u32,
     }
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::create(&X);
-    assert_eq!(*RES.x, 1);
+    const RES: A = A::create(1);
+    assert_eq!(RES.x, 1);
 }
 
 #[test]
 fn const_tuple_struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create", const = true)]
-    struct A<'a, T>(&'a T);
+    struct A(u32);
 
-    const X: u64 = 1u64;
-    const RES: A<u64> = A::create(&X);
-    assert_eq!(*RES.0, 1);
+    const RES: A = A::create(1);
+    assert_eq!(RES.0, 1);
 }

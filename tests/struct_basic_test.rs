@@ -756,46 +756,104 @@ fn tuple_struct_with_static_lifetime() {
 fn struct_private_new() {
     #[derive(New)]
     #[new(pub = false)]
-    struct A<'a, T> {
-        x: &'a T,
+    struct A {
+        x: u32,
     }
 
-    let x = 1u64;
-    let res = A::new(&x);
-    assert_eq!(*res.x, 1);
+    let res = A::new(1);
+    assert_eq!(res.x, 1);
 }
 
 #[test]
 fn tuple_struct_private_new() {
     #[derive(New)]
     #[new(pub = false)]
-    struct A<'a, T>(&'a T);
+    struct A(u32);
 
-    let x = 1u64;
-    let res = A::new(&x);
-    assert_eq!(*res.0, 1);
+    let res = A::new(1);
+    assert_eq!(res.0, 1);
+}
+
+#[test]
+fn struct_custom_visibility() {
+    #[derive(New)]
+    #[new(pub = "crate")]
+    struct A {
+        x: u32,
+    }
+
+    mod nested {
+        use super::*;
+
+        #[derive(New)]
+        #[new(pub = "super")]
+        pub struct B {
+            pub x: u32,
+        }
+    }
+
+    #[derive(New)]
+    #[new(pub = "self")]
+    struct C {
+        x: u32,
+    }
+
+    let res = A::new(1);
+    assert_eq!(res.x, 1);
+
+    let res2 = nested::B::new(2);
+    assert_eq!(res2.x, 2);
+
+    let res3 = C::new(3);
+    assert_eq!(res3.x, 3);
+}
+
+#[test]
+fn tuple_struct_custom_visibility() {
+    #[derive(New)]
+    #[new(pub = "crate")]
+    struct A(u32);
+
+    mod nested {
+        use super::*;
+
+        #[derive(New)]
+        #[new(pub = "super")]
+        pub struct B(pub u32);
+    }
+
+    #[derive(New)]
+    #[new(pub = "self")]
+    struct C(u32);
+
+    let res = A::new(1);
+    assert_eq!(res.0, 1);
+
+    let res2 = nested::B::new(2);
+    assert_eq!(res2.0, 2);
+
+    let res3 = C::new(3);
+    assert_eq!(res3.0, 3);
 }
 
 #[test]
 fn struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create")]
-    struct A<'a, T> {
-        x: &'a T,
+    struct A {
+        x: u32,
     }
 
-    let x = 1u64;
-    let res = A::create(&x);
-    assert_eq!(*res.x, 1);
+    let res = A::create(1);
+    assert_eq!(res.x, 1);
 }
 
 #[test]
 fn tuple_struct_rename_new() {
     #[derive(New)]
     #[new(rename = "create")]
-    struct A<'a, T>(&'a T);
+    struct A(u32);
 
-    let x = 1u64;
-    let res = A::create(&x);
-    assert_eq!(*res.0, 1);
+    let res = A::create(1);
+    assert_eq!(res.0, 1);
 }
