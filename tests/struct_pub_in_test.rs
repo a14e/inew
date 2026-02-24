@@ -5,23 +5,23 @@ mod nested {
         use inew::New;
 
         #[derive(New)]
-        #[new(pub_in = "crate::nested")]
+        #[new(pub(in crate::nested))]
         pub struct A {
             pub x: u32,
         }
 
         #[derive(New)]
-        #[new(pub_in = "crate::nested")]
+        #[new(pub(in crate::nested))]
         pub struct B(pub u64);
 
         #[derive(New)]
-        #[new(pub_in = "crate::nested", const = true)]
+        #[new(pub(in crate::nested), const)]
         pub struct C {
             pub x: u32,
         }
 
         #[derive(New)]
-        #[new(pub_in = "crate::nested", const = true)]
+        #[new(pub(in crate::nested), const)]
         pub struct D(pub u64);
     }
 

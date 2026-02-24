@@ -5,25 +5,25 @@ mod nested {
         use inew::New;
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub_in = "crate::nested")]
+        #[new(pub(in crate::nested))]
         pub enum A {
             I { x: u32 },
         }
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub_in = "crate::nested")]
+        #[new(pub(in crate::nested))]
         pub enum B {
             I(u64),
         }
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub_in = "crate::nested", const = true)]
+        #[new(pub(in crate::nested), const)]
         pub enum C {
             I { x: u32 },
         }
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub_in = "crate::nested", const = true)]
+        #[new(pub(in crate::nested), const)]
         pub enum D {
             I(u64),
         }

@@ -1,11 +1,15 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, ToTokens};
 use syn::{
-    meta::ParseNestedMeta, punctuated::Punctuated, token::Comma, Attribute, Error, Expr, Field,
-    Fields, GenericArgument, Lit, LitBool, LitStr, PathArguments, Token, Type, TypePath, TypeTuple,
+    meta::ParseNestedMeta,
+    parenthesized,
+    punctuated::Punctuated,
+    token::{Comma, Paren},
+    Attribute, Error, Expr, Field, Fields, GenericArgument, LitBool, LitStr, PathArguments, Token,
+    Type, TypePath, TypeTuple,
 };
 
-pub(crate) struct MainProperties {
+pub(crate) struct MainOptions {
     pub visibility: TokenStream,
     pub constructor_name: Ident,
     pub constant: bool,
@@ -26,7 +30,7 @@ pub(crate) enum VariantShape {
 }
 
 enum Visibility {
-    Inherit,
+    Private,
     Public,
     Crate,
     Super,
@@ -55,8 +59,8 @@ enum DefaultValue {
     CustomFunction(TokenStream),
 }
 
-pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<MainProperties> {
-    let mut visibility: Option<Visibility> = None;
+pub(crate) fn collect_main_options(attributes: &[Attribute]) -> syn::Result<MainOptions> {
+    let mut visibility = None;
     let mut rename = None;
     let mut constant = None;
 
@@ -70,27 +74,36 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
         if seen_new_attribute {
             return Err(Error::new_spanned(
                 attribute,
-                "Multiple #[new(...)] attributes found. Ensure only one is present.",
+                "Multiple `#[new(...)]` attributes are not allowed.",
             ));
         }
 
         seen_new_attribute = true;
-        let mut has_arguments = false;
+        let mut has_options = false;
 
         attribute.parse_nested_meta(|meta| {
-            has_arguments = true;
-            main_properties_parser(meta, &mut visibility, &mut rename, &mut constant)
+            has_options = true;
+            main_options_parser(meta, &mut visibility, &mut rename, &mut constant)
         })?;
 
-        if !has_arguments {
+        if !has_options {
             return Err(Error::new_spanned(
                 attribute,
-                "Expected at least one argument inside #[new(...)] attribute.",
+                "`#[new]` requires at least one argument (e.g. `#[new(pub)]` or `#[new(rename = \"foo\")]`).",
             ));
         }
     }
 
-    let visibility = visibility.unwrap_or(Visibility::Public);
+    let visibility = visibility.unwrap_or_else(|| {
+        #[cfg(feature = "public-default")]
+        {
+            Visibility::Public
+        }
+        #[cfg(not(feature = "public-default"))]
+        {
+            Visibility::Private
+        }
+    });
     let visibility_token = create_visibility_token(&visibility);
 
     let constructor_name = rename.unwrap_or_else(|| Ident::new("new", Span::call_site()));
@@ -102,7 +115,7 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
         quote!()
     };
 
-    Ok(MainProperties {
+    Ok(MainOptions {
         visibility: visibility_token,
         constructor_name,
         constant: constant_result,
@@ -110,98 +123,172 @@ pub(crate) fn collect_main_properties(attributes: &[Attribute]) -> syn::Result<M
     })
 }
 
-fn main_properties_parser(
+fn main_options_parser(
     meta: ParseNestedMeta<'_>,
     visibility: &mut Option<Visibility>,
     rename: &mut Option<Ident>,
     constant: &mut Option<bool>,
 ) -> syn::Result<()> {
-    if meta.path.is_ident("pub") {
-        if visibility.is_some() {
-            return Err(meta.error("Duplicate 'pub' key found in #[new(...)] attribute."));
-        }
-
-        let value = meta.value()?;
-        let lit = value.parse::<Lit>()?;
-
-        match lit {
-            Lit::Bool(lit_bool) => {
-                *visibility = Some(if lit_bool.value {
-                    Visibility::Public
-                } else {
-                    Visibility::Inherit
-                });
-            }
-            Lit::Str(lit_str) => {
-                *visibility = match lit_str.value().as_str() {
-                    "crate" => Some(Visibility::Crate),
-                    "super" => Some(Visibility::Super),
-                    "self" => Some(Visibility::InSelf),
-                    other => {
-                        return Err(Error::new_spanned(
-                            lit_str,
-                            format!("Invalid 'pub' value in #[new(...)]. Expected 'crate', 'super' or 'self', found '{}'", other),
-                        ));
-                    }
-                };
-            }
-            _ => {
-                return Err(Error::new_spanned(
-                    lit,
-                    "Expected boolean or string literal for 'pub'",
-                ));
-            }
-        }
-
-        return Ok(());
+    if meta.path.is_ident("public") {
+        return Err(meta.error("Unknown argument `public`. Did you mean `pub`?"));
     }
 
-    if meta.path.is_ident("pub_in") {
+    if meta.path.is_ident("constant") {
+        return Err(meta.error("Unknown argument `constant`. Did you mean `const`?"));
+    }
+
+    if meta.path.is_ident("pub") {
         if visibility.is_some() {
-            return Err(meta.error("Cannot combine 'pub' and 'pub_in' in #[new(...)]"));
+            return Err(meta.error("`pub` specified more than once in `#[new(...)]`."));
         }
 
-        let value = meta.value()?;
-        let lit_str = value.parse::<LitStr>()?;
+        // #[new(pub(...))]
+        if meta.input.peek(Paren) {
+            let content;
+            parenthesized!(content in meta.input);
 
-        let path = lit_str.value().parse::<TokenStream>().map_err(|_| {
-            Error::new_spanned(&lit_str, "Invalid path for 'pub_in' in #[new(...)]")
-        })?;
+            if content.is_empty() {
+                return Err(
+                    meta.error("Empty `pub()` is not valid. Use `pub` or `pub(<restriction>)`.")
+                );
+            }
 
-        *visibility = Some(Visibility::In(path.into_token_stream()));
+            if content.peek(Token![crate]) {
+                content.parse::<Token![crate]>()?;
+
+                if !content.is_empty() {
+                    return Err(meta.error("Unexpected tokens after `crate` in `pub(...)`."));
+                }
+
+                *visibility = Some(Visibility::Crate);
+                return Ok(());
+            }
+
+            if content.peek(Token![super]) {
+                content.parse::<Token![super]>()?;
+
+                if !content.is_empty() {
+                    return Err(meta.error("Unexpected tokens after `super` in `pub(...)`."));
+                }
+
+                *visibility = Some(Visibility::Super);
+                return Ok(());
+            }
+
+            if content.peek(Token![self]) {
+                content.parse::<Token![self]>()?;
+
+                if !content.is_empty() {
+                    return Err(meta.error("Unexpected tokens after `self` in `pub(...)`."));
+                }
+
+                *visibility = Some(Visibility::InSelf);
+                return Ok(());
+            }
+
+            if content.peek(Token![in]) {
+                content.parse::<Token![in]>()?;
+                let path: syn::Path = content
+                    .parse()
+                    .map_err(|_| meta.error("Expected path after `in` in `pub(in <path>)`."))?;
+
+                if !content.is_empty() {
+                    return Err(meta.error("Unexpected tokens after `in <path>` in `pub(...)`."));
+                }
+
+                *visibility = Some(Visibility::In(path.into_token_stream()));
+                return Ok(());
+            }
+
+            return Err(
+                meta.error("Invalid visibility inside `pub(...)`. Expected `crate`, `super`, `self`, or `in <path>`."),
+            );
+        }
+
+        // #[new(pub = ...)]
+        if meta.input.peek(Token![=]) {
+            meta.input.parse::<Token![=]>()?;
+
+            if !meta.input.peek(LitBool) {
+                return Err(meta.error("Expected boolean literal after `pub =`."));
+            }
+
+            let lit_bool = meta.input.parse::<LitBool>()?;
+            *visibility = Some(if lit_bool.value {
+                Visibility::Public
+            } else {
+                Visibility::Private
+            });
+            return Ok(());
+        }
+
+        // #[new(pub)]
+        *visibility = Some(Visibility::Public);
         return Ok(());
     }
 
     if meta.path.is_ident("rename") {
         if rename.is_some() {
-            return Err(meta.error("Duplicate 'rename' key found in #[new(...)] attribute."));
+            return Err(meta.error("`rename` specified more than once in `#[new(...)]`."));
         }
 
-        let value = meta.value()?;
-        let lit_str = value.parse::<LitStr>()?;
-        *rename = Some(Ident::new(&lit_str.value(), lit_str.span()));
+        if !meta.input.peek(Token![=]) {
+            return Err(meta.error("Expected `rename = \"name\"`."));
+        }
+
+        // #[new(rename = ...)]
+        meta.input.parse::<Token![=]>()?;
+
+        if !meta.input.peek(LitStr) {
+            return Err(meta.error("Expected string literal after `rename =`."));
+        }
+
+        let lit_str = meta.input.parse::<LitStr>()?;
+        let name = lit_str.value();
+
+        if syn::parse_str::<Ident>(&name).is_err() {
+            return Err(Error::new_spanned(
+                lit_str,
+                "`rename` must be a valid Rust identifier.",
+            ));
+        }
+
+        *rename = Some(Ident::new(&name, lit_str.span()));
         return Ok(());
     }
 
     if meta.path.is_ident("const") {
         if constant.is_some() {
-            return Err(meta.error("Duplicate 'const' key found in #[new(...)] attribute."));
+            return Err(meta.error("`const` specified more than once in `#[new(...)]`."));
         }
 
-        let value = meta.value()?;
-        let lit_bool = value.parse::<LitBool>()?;
+        // #[new(const)]
+        if !meta.input.peek(Token![=]) {
+            *constant = Some(true);
+            return Ok(());
+        }
+
+        // #[new(const = ...)]
+        meta.input.parse::<Token![=]>()?;
+
+        if !meta.input.peek(LitBool) {
+            return Err(meta.error("Expected boolean literal after `const =`."));
+        }
+
+        let lit_bool = meta.input.parse::<LitBool>()?;
+
         *constant = Some(lit_bool.value);
         return Ok(());
     }
 
-    return Err(meta.error("Unknown argument in #[new(...)] attribute."));
+    return Err(meta.error("Unknown argument. Expected one of: `pub`, `rename`, `const`."));
 }
 
 fn create_visibility_token(visibility: &Visibility) -> TokenStream {
     use Visibility::*;
 
     match visibility {
-        Inherit => quote!(),
+        Private => quote!(),
         Public => quote!(pub),
         Crate => quote!(pub(crate)),
         Super => quote!(pub(super)),
@@ -222,21 +309,21 @@ pub(crate) fn build_constructor_plan(
             if matches!(field.default, DefaultValue::Trait) {
                 return Err(Error::new_spanned(
                     &field.name,
-                    "'default' is not allowed in const constructors",
+                    "`default` cannot be used in constant constructors.",
                 ));
             }
 
             if field.into {
                 return Err(Error::new_spanned(
                     &field.name,
-                    "'into' is not allowed in const constructors",
+                    "`into` cannot be used in constant constructors.",
                 ));
             }
 
             if field.into_iter.is_some() {
                 return Err(Error::new_spanned(
                     &field.name,
-                    "'into_iter' is not allowed in const constructors",
+                    "`into_iter` cannot be used in constant constructors.",
                 ));
             }
         }
@@ -276,7 +363,7 @@ fn collect_field_data(index: usize, field: &Field) -> syn::Result<FieldData> {
         .clone()
         .unwrap_or_else(|| format_ident!("_{}", index));
     let ty = field.ty.clone();
-    let (default, into, into_iter) = read_field_settings(field)?;
+    let (default, into, into_iter) = collect_field_options(field)?;
 
     Ok(FieldData {
         name: ident,
@@ -287,7 +374,7 @@ fn collect_field_data(index: usize, field: &Field) -> syn::Result<FieldData> {
     })
 }
 
-fn read_field_settings(field: &Field) -> syn::Result<(DefaultValue, bool, Option<IntoIterKind>)> {
+fn collect_field_options(field: &Field) -> syn::Result<(DefaultValue, bool, Option<IntoIterKind>)> {
     let mut default_value = DefaultValue::None;
     let mut into = false;
     let mut into_iter: Option<IntoIterKind> = None;
@@ -302,23 +389,23 @@ fn read_field_settings(field: &Field) -> syn::Result<(DefaultValue, bool, Option
         if seen_new_attribute {
             return Err(Error::new_spanned(
                 attribute,
-                "Multiple #[new(...)] attributes found. Ensure the field has only one #[new(...)] attribute.",
+                "Multiple `#[new(...)]` attributes are not allowed.",
             ));
         }
 
         seen_new_attribute = true;
 
-        let mut has_arguments = false;
+        let mut has_options = false;
 
         attribute.parse_nested_meta(|meta| {
-            has_arguments = true;
-            field_settings_parser(meta, &mut default_value, &mut into, &mut into_iter)
+            has_options = true;
+            field_options_parser(meta, &mut default_value, &mut into, &mut into_iter)
         })?;
 
-        if !has_arguments {
+        if !has_options {
             return Err(Error::new_spanned(
                 attribute,
-                "Expected an argument in #[new(...)] attribute.",
+                "Expected an argument in `#[new(...)]` attribute.",
             ));
         }
     }
@@ -328,7 +415,7 @@ fn read_field_settings(field: &Field) -> syn::Result<(DefaultValue, bool, Option
     Ok((default_value, into, into_iter))
 }
 
-fn field_settings_parser(
+fn field_options_parser(
     meta: ParseNestedMeta<'_>,
     default_value: &mut DefaultValue,
     into: &mut bool,
@@ -336,14 +423,16 @@ fn field_settings_parser(
 ) -> syn::Result<()> {
     if meta.path.is_ident("default") {
         if !matches!(default_value, DefaultValue::None) {
-            return Err(meta.error("Duplicate 'default' key found in #[new(...)] attribute."));
+            return Err(meta.error("`default` specified more than once in `#[new(...)]`."));
         }
 
+        // #[new(default)]
         if !meta.input.peek(Token![=]) {
             *default_value = DefaultValue::Trait;
             return Ok(());
         }
 
+        // #[new(default = ...)]
         meta.input.parse::<Token![=]>()?;
         let default_expression = meta.input.parse::<Expr>()?;
         *default_value = DefaultValue::CustomFunction(default_expression.into_token_stream());
@@ -352,23 +441,26 @@ fn field_settings_parser(
 
     if meta.path.is_ident("into") {
         if *into {
-            return Err(meta.error("Duplicate 'into' key found in #[new(...)] attribute."));
+            return Err(meta.error("`into` specified more than once in `#[new(...)]`."));
         }
 
+        // #[new(into)]
         *into = true;
         return Ok(());
     }
 
     if meta.path.is_ident("into_iter") {
         if into_iter.is_some() {
-            return Err(meta.error("Duplicate 'into_iter' key found in #[new(...)] attribute."));
+            return Err(meta.error("`into_iter` specified more than once in `#[new(...)]`."));
         }
 
+        // #[new(into_iter)]
         if !meta.input.peek(Token![=]) {
             *into_iter = Some(IntoIterKind::Inferred);
             return Ok(());
         }
 
+        // #[new(into_iter = ...)]
         meta.input.parse::<Token![=]>()?;
         let ty = meta.input.parse::<Type>()?;
 
@@ -376,7 +468,7 @@ fn field_settings_parser(
         return Ok(());
     }
 
-    Err(meta.error("Unknown argument found in #[new(...)] attribute."))
+    Err(meta.error("Unknown argument in `#[new(...)]` for field. Expected one of: `default`, `into`, `into_iter`."))
 }
 
 fn detect_automatic_defaults(default_value: &mut DefaultValue, field: &Field) {
@@ -403,11 +495,22 @@ fn is_phantom_data(ty: &Type) -> bool {
         return false;
     };
 
-    let Some(last) = path.segments.last() else {
-        return false;
-    };
+    let segments = &path.segments;
 
-    return last.ident == "PhantomData";
+    match segments.len() {
+        // PhantomData<T>
+        1 => segments[0].ident == "PhantomData",
+
+        // core::marker::PhantomData<T>
+        // std::marker::PhantomData<T>
+        3 => {
+            (segments[0].ident == "core" || segments[0].ident == "std")
+                && segments[1].ident == "marker"
+                && segments[2].ident == "PhantomData"
+        }
+
+        _ => false,
+    }
 }
 
 fn check_invalid_combinations(
@@ -419,21 +522,21 @@ fn check_invalid_combinations(
     if !matches!(default_value, DefaultValue::None) && into {
         return Err(Error::new_spanned(
             field,
-            "'default' and 'into' cannot be combined in the same #[new(...)] attribute.",
+            "`default` cannot be combined with `into` in `#[new(...)]`.",
         ));
     }
 
     if !matches!(default_value, DefaultValue::None) && into_iter.is_some() {
         return Err(Error::new_spanned(
             field,
-            "'default' and 'into_iter' cannot be combined in the same #[new(...)] attribute.",
+            "`default` cannot be combined with `into_iter` in `#[new(...)]`.",
         ));
     }
 
     if into && into_iter.is_some() {
         return Err(Error::new_spanned(
             field,
-            "'into' and 'into_iter' cannot be combined in the same #[new(...)] attribute.",
+            "`into` cannot be combined with `into_iter` in `#[new(...)]`.",
         ));
     }
 
@@ -475,7 +578,7 @@ fn build_named_initializer(name: &Ident, default: &DefaultValue) -> Option<Token
         DefaultValue::None => None,
         Unit => Some(quote!(#name: ())),
         PhantomData => Some(quote!(#name: ::core::marker::PhantomData)),
-        Trait => Some(quote!(#name: Default::default())),
+        Trait => Some(quote!(#name: ::core::default::Default::default())),
         CustomFunction(function) => Some(quote!(#name: #function)),
     }
 }
@@ -487,7 +590,7 @@ fn build_unnamed_initializer(default: &DefaultValue) -> Option<TokenStream> {
         DefaultValue::None => None,
         Unit => Some(quote!(())),
         PhantomData => Some(quote!(::core::marker::PhantomData)),
-        Trait => Some(quote!(Default::default())),
+        Trait => Some(quote!(::core::default::Default::default())),
         CustomFunction(function) => Some(quote!(#function)),
     }
 }
@@ -575,35 +678,35 @@ fn extract_inner_type(ty: &Type) -> syn::Result<Type> {
     let Type::Path(type_path) = ty else {
         return Err(Error::new_spanned(
             ty,
-            "Cannot infer iterator item type. Use #[new(into_iter = T)] to specify the item type explicitly.",
+            "Could not infer iterator item type from field type. Use `#[new(into_iter = T)]` to specify the item type explicitly.",
         ));
     };
 
     let Some(segment) = type_path.path.segments.last() else {
         return Err(Error::new_spanned(
             ty,
-            "Cannot infer iterator item type. Use #[new(into_iter = T)] to specify the item type explicitly.",
+            "Could not infer iterator item type from field type. Use `#[new(into_iter = T)]` to specify the item type explicitly.",
         ));
     };
 
     let PathArguments::AngleBracketed(args) = &segment.arguments else {
         return Err(Error::new_spanned(
             ty,
-            "Iterator item type could not be inferred. Use #[new(into_iter = T)] to specify the item type explicitly.",
+            "Could not infer iterator item type from field type. Use `#[new(into_iter = T)]` to specify the item type explicitly.",
         ));
     };
 
     let Some(first) = args.args.first() else {
         return Err(Error::new_spanned(
             ty,
-            "Iterator item type could not be inferred. Use #[new(into_iter = T)] to specify the item type explicitly.",
+            "Could not infer iterator item type from field type. Use `#[new(into_iter = T)]` to specify the item type explicitly.",
         ));
     };
 
     let GenericArgument::Type(inner) = first else {
         return Err(Error::new_spanned(
             first,
-            "Unsupported generic argument. Use #[new(into_iter = T)] to specify the iterator item type explicitly.",
+            "Unsupported generic argument. Use `#[new(into_iter = T)]` to specify the iterator item type explicitly.",
         ));
     };
 

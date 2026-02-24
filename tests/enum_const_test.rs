@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 #[test]
 fn const_unit_like_enum_with_braces() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I {},
     }
@@ -16,7 +16,7 @@ fn const_unit_like_enum_with_braces() {
 #[test]
 fn const_unit_like_enum_without_braces() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I,
     }
@@ -28,7 +28,7 @@ fn const_unit_like_enum_without_braces() {
 #[test]
 fn const_unit_like_enum_with_parentheses() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(),
     }
@@ -40,7 +40,7 @@ fn const_unit_like_enum_with_parentheses() {
 #[test]
 fn const_enum_single_field() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I { x: u32 },
     }
@@ -51,6 +51,30 @@ fn const_enum_single_field() {
 
 #[test]
 fn const_tuple_enum_single_field() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(const)]
+    enum A {
+        I(u32),
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I(1));
+}
+
+#[test]
+fn const_enum_explicit_syntax() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(const = true)]
+    enum A {
+        I { x: u32 },
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I { x: 1 });
+}
+
+#[test]
+fn const_tuple_enum_explicit_syntax() {
     #[derive(Debug, PartialEq, New)]
     #[new(const = true)]
     enum A {
@@ -64,7 +88,7 @@ fn const_tuple_enum_single_field() {
 #[test]
 fn const_enum_multiple_fields() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I { x: u32, y: u64 },
     }
@@ -76,7 +100,7 @@ fn const_enum_multiple_fields() {
 #[test]
 fn const_tuple_enum_multiple_fields() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(u32, u64),
     }
@@ -90,7 +114,7 @@ fn const_enum_type_alias() {
     type X = u32;
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I { x: X },
     }
@@ -104,7 +128,7 @@ fn const_tuple_enum_type_alias() {
     type X = u32;
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(X),
     }
@@ -116,7 +140,7 @@ fn const_tuple_enum_type_alias() {
 #[test]
 fn const_enum_mixed_variants() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum MyEnum {
         I,
         J { x: u32 },
@@ -144,7 +168,7 @@ fn const_enum_mixed_variants() {
 #[test]
 fn const_enum_unit_auto_default() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I { x: () },
     }
@@ -156,7 +180,7 @@ fn const_enum_unit_auto_default() {
 #[test]
 fn const_tuple_enum_unit_auto_default() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(()),
     }
@@ -168,7 +192,7 @@ fn const_tuple_enum_unit_auto_default() {
 #[test]
 fn const_enum_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I { x: PhantomData<T> },
     }
@@ -180,7 +204,7 @@ fn const_enum_phantom_data_auto_default() {
 #[test]
 fn const_tuple_enum_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I(PhantomData<T>),
     }
@@ -192,7 +216,7 @@ fn const_tuple_enum_phantom_data_auto_default() {
 #[test]
 fn const_enum_with_default_expression() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I {
             x: u32,
@@ -208,7 +232,7 @@ fn const_enum_with_default_expression() {
 #[test]
 fn const_tuple_enum_with_default_expression() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(u32, #[new(default = 1 + 2)] u64),
     }
@@ -226,7 +250,7 @@ fn const_enum_with_default_custom_macro() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I {
             x: u32,
@@ -248,7 +272,7 @@ fn const_tuple_enum_with_default_custom_macro() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(u32, #[new(default = custom_macro!())] u64),
     }
@@ -264,7 +288,7 @@ fn const_enum_with_default_const_function() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I {
             x: u32,
@@ -284,7 +308,7 @@ fn const_tuple_enum_with_default_const_function() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(u32, #[new(default = custom_default())] u64),
     }
@@ -302,7 +326,7 @@ fn const_enum_with_nested_default_const_function() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I {
             x: u32,
@@ -324,7 +348,7 @@ fn const_tuple_enum_with_nested_default_const_function() {
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(u32, #[new(default = nested::custom_default())] u64),
     }
@@ -336,7 +360,7 @@ fn const_tuple_enum_with_nested_default_const_function() {
 #[test]
 fn const_enum_with_single_generic() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I { x: T },
     }
@@ -348,7 +372,7 @@ fn const_enum_with_single_generic() {
 #[test]
 fn const_tuple_enum_with_single_generic() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I(T),
     }
@@ -360,7 +384,7 @@ fn const_tuple_enum_with_single_generic() {
 #[test]
 fn const_enum_with_single_generic_and_another_field() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I { x: T, y: u32 },
     }
@@ -372,7 +396,7 @@ fn const_enum_with_single_generic_and_another_field() {
 #[test]
 fn const_tuple_enum_with_single_generic_and_another_field() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<T> {
         I(T, u32),
     }
@@ -384,7 +408,7 @@ fn const_tuple_enum_with_single_generic_and_another_field() {
 #[test]
 fn const_enum_with_multiple_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<X, Y> {
         I { x: X, y: Y },
     }
@@ -396,7 +420,7 @@ fn const_enum_with_multiple_generics() {
 #[test]
 fn const_tuple_enum_with_multiple_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<X, Y> {
         I(X, Y),
     }
@@ -408,13 +432,13 @@ fn const_tuple_enum_with_multiple_generics() {
 #[test]
 fn const_enum_with_nested_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum X<Y, Z> {
         J { y: Y, z: Z },
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<Y, Z> {
         I { x: X<Y, Z> },
     }
@@ -431,13 +455,13 @@ fn const_enum_with_nested_generics() {
 #[test]
 fn const_tuple_enum_with_nested_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum X<Y, Z> {
         J(Y, Z),
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<Y, Z> {
         I(X<Y, Z>),
     }
@@ -449,7 +473,7 @@ fn const_tuple_enum_with_nested_generics() {
 #[test]
 fn const_enum_with_lifetimes() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<'a> {
         I { x: &'a u64 },
     }
@@ -462,7 +486,7 @@ fn const_enum_with_lifetimes() {
 #[test]
 fn const_tuple_enum_with_lifetimes() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<'a> {
         I(&'a u64),
     }
@@ -475,7 +499,7 @@ fn const_tuple_enum_with_lifetimes() {
 #[test]
 fn const_enum_with_lifetimes_and_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<'a, T> {
         I { x: &'a T },
     }
@@ -488,7 +512,7 @@ fn const_enum_with_lifetimes_and_generics() {
 #[test]
 fn const_tuple_enum_with_lifetimes_and_generics() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A<'a, T> {
         I(&'a T),
     }
@@ -503,7 +527,7 @@ fn const_enum_with_static_lifetime() {
     const X: &str = "abc";
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I { x: &'static str },
     }
@@ -517,7 +541,7 @@ fn const_tuple_enum_with_static_lifetime() {
     const X: &str = "abc";
 
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         I(&'static str),
     }
@@ -527,9 +551,51 @@ fn const_tuple_enum_with_static_lifetime() {
 }
 
 #[test]
-fn const_enum_private_new() {
+fn const_enum_public_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = false, const = true)]
+    #[new(pub, const)]
+    enum A {
+        I { x: u32 },
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = true, const)]
+    enum B {
+        J { x: u32 },
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I { x: 1 });
+
+    const RES2: B = B::new_j(2);
+    assert_eq!(RES2, B::J { x: 2 });
+}
+
+#[test]
+fn const_tuple_enum_public_new() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub, const)]
+    enum A {
+        I(u32),
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = true, const)]
+    enum B {
+        J(u32),
+    }
+
+    const RES: A = A::new_i(1);
+    assert_eq!(RES, A::I(1));
+
+    const RES2: B = B::new_j(2);
+    assert_eq!(RES2, B::J(2));
+}
+
+#[test]
+fn const_enum_explicit_private_new() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = false, const)]
     enum A {
         I { x: u32 },
     }
@@ -539,9 +605,9 @@ fn const_enum_private_new() {
 }
 
 #[test]
-fn const_tuple_enum_private_new() {
+fn const_tuple_enum_explicit_private_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = false, const = true)]
+    #[new(pub = false, const)]
     enum A {
         I(u32),
     }
@@ -553,7 +619,7 @@ fn const_tuple_enum_private_new() {
 #[test]
 fn const_enum_custom_visibility() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "crate", const = true)]
+    #[new(pub(crate), const)]
     enum A {
         I { x: u32 },
     }
@@ -562,14 +628,14 @@ fn const_enum_custom_visibility() {
         use super::*;
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub = "super", const = true)]
+        #[new(pub(super), const)]
         pub enum B {
             I { x: u32 },
         }
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "self", const = true)]
+    #[new(pub(self), const)]
     enum C {
         I { x: u32 },
     }
@@ -587,7 +653,7 @@ fn const_enum_custom_visibility() {
 #[test]
 fn const_tuple_enum_custom_visibility() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "crate", const = true)]
+    #[new(pub(crate), const)]
     enum A {
         I(u32),
     }
@@ -596,14 +662,14 @@ fn const_tuple_enum_custom_visibility() {
         use super::*;
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub = "super", const = true)]
+        #[new(pub(super), const)]
         pub enum B {
             I(u32),
         }
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "self", const = true)]
+    #[new(pub(self), const)]
     enum C {
         I(u32),
     }
@@ -621,7 +687,7 @@ fn const_tuple_enum_custom_visibility() {
 #[test]
 fn const_enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(rename = "create", const = true)]
+    #[new(rename = "create", const)]
     enum A {
         I { x: u32 },
     }
@@ -633,7 +699,7 @@ fn const_enum_rename_new() {
 #[test]
 fn const_tuple_enum_rename_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(rename = "create", const = true)]
+    #[new(rename = "create", const)]
     enum A {
         I(u32),
     }
@@ -645,7 +711,7 @@ fn const_tuple_enum_rename_new() {
 #[test]
 fn const_enum_constructor_name() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         HTTPStatus { x: u32 },
         XMLHttpRequest { y: u64 },
@@ -669,7 +735,7 @@ fn const_enum_constructor_name() {
 #[test]
 fn const_tuple_enum_constructor_name() {
     #[derive(Debug, PartialEq, New)]
-    #[new(const = true)]
+    #[new(const)]
     enum A {
         HTTPStatus(u32),
         XMLHttpRequest(u64),
@@ -693,7 +759,7 @@ fn const_tuple_enum_constructor_name() {
 #[test]
 fn enum_constructor_rename_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(rename = "create", const = true)]
+    #[new(rename = "create", const)]
     enum A {
         HTTPStatus { x: u32 },
         XMLHttpRequest { y: u64 },
@@ -717,7 +783,7 @@ fn enum_constructor_rename_new() {
 #[test]
 fn tuple_enum_constructor_rename_new() {
     #[derive(Debug, PartialEq, New)]
-    #[new(rename = "create", const = true)]
+    #[new(rename = "create", const)]
     enum A {
         HTTPStatus(u32),
         XMLHttpRequest(u64),

@@ -57,6 +57,30 @@ fn tuple_enum_single_field() {
 }
 
 #[test]
+fn enum_explicit_syntax() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(const = false)]
+    enum A {
+        I { x: u32 },
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I { x: 1 });
+}
+
+#[test]
+fn tuple_enum_explicit_syntax() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(const = false)]
+    enum A {
+        I(u32),
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I(1));
+}
+
+#[test]
 fn enum_multiple_fields() {
     #[derive(Debug, PartialEq, New)]
     enum A {
@@ -859,7 +883,49 @@ fn tuple_enum_with_static_lifetime() {
 }
 
 #[test]
-fn enum_private_new() {
+fn enum_public_new() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub)]
+    enum A {
+        I { x: u32 },
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = true)]
+    enum B {
+        J { x: u32 },
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I { x: 1 });
+
+    let res2 = B::new_j(2);
+    assert_eq!(res2, B::J { x: 2 });
+}
+
+#[test]
+fn tuple_enum_public_new() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub)]
+    enum A {
+        I(u32),
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(pub = true)]
+    enum B {
+        J(u32),
+    }
+
+    let res = A::new_i(1);
+    assert_eq!(res, A::I(1));
+
+    let res2 = B::new_j(2);
+    assert_eq!(res2, B::J(2));
+}
+
+#[test]
+fn enum_explicit_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false)]
     enum A {
@@ -871,7 +937,7 @@ fn enum_private_new() {
 }
 
 #[test]
-fn tuple_enum_private_new() {
+fn tuple_enum_explicit_private_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub = false)]
     enum A {
@@ -885,7 +951,7 @@ fn tuple_enum_private_new() {
 #[test]
 fn enum_custom_visibility() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "crate")]
+    #[new(pub(crate))]
     enum A {
         I { x: u32 },
     }
@@ -894,14 +960,14 @@ fn enum_custom_visibility() {
         use super::*;
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub = "super")]
+        #[new(pub(super))]
         pub enum B {
             I { x: u32 },
         }
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "self")]
+    #[new(pub(self))]
     enum C {
         I { x: u32 },
     }
@@ -919,7 +985,7 @@ fn enum_custom_visibility() {
 #[test]
 fn tuple_enum_custom_visibility() {
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "crate")]
+    #[new(pub(crate))]
     enum A {
         I(u32),
     }
@@ -928,14 +994,14 @@ fn tuple_enum_custom_visibility() {
         use super::*;
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub = "super")]
+        #[new(pub(super))]
         pub enum B {
             I(u32),
         }
     }
 
     #[derive(Debug, PartialEq, New)]
-    #[new(pub = "self")]
+    #[new(pub(self))]
     enum C {
         I(u32),
     }

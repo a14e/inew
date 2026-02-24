@@ -40,6 +40,28 @@ fn tuple_struct_single_field() {
 }
 
 #[test]
+fn struct_explicit_syntax() {
+    #[derive(New)]
+    #[new(const = false)]
+    struct A {
+        x: u32,
+    }
+
+    let res = A::new(1);
+    assert_eq!(res.x, 1);
+}
+
+#[test]
+fn tuple_struct_explicit_syntax() {
+    #[derive(New)]
+    #[new(const = false)]
+    struct A(u32);
+
+    let res = A::new(2);
+    assert_eq!(res.0, 2);
+}
+
+#[test]
 fn struct_multiple_fields() {
     #[derive(New)]
     struct A {
@@ -753,7 +775,45 @@ fn tuple_struct_with_static_lifetime() {
 }
 
 #[test]
-fn struct_private_new() {
+fn struct_public_new() {
+    #[derive(New)]
+    #[new(pub)]
+    struct A {
+        x: u32,
+    }
+
+    #[derive(New)]
+    #[new(pub = true)]
+    struct B {
+        x: u32,
+    }
+
+    let res = A::new(1);
+    assert_eq!(res.x, 1);
+
+    let res2 = B::new(2);
+    assert_eq!(res2.x, 2);
+}
+
+#[test]
+fn tuple_struct_public_new() {
+    #[derive(New)]
+    #[new(pub)]
+    struct A(u32);
+
+    #[derive(New)]
+    #[new(pub = true)]
+    struct B(u32);
+
+    let res = A::new(1);
+    assert_eq!(res.0, 1);
+
+    let res2 = B::new(2);
+    assert_eq!(res2.0, 2);
+}
+
+#[test]
+fn struct_explicit_private_new() {
     #[derive(New)]
     #[new(pub = false)]
     struct A {
@@ -765,7 +825,7 @@ fn struct_private_new() {
 }
 
 #[test]
-fn tuple_struct_private_new() {
+fn tuple_struct_explicit_private_new() {
     #[derive(New)]
     #[new(pub = false)]
     struct A(u32);
@@ -777,7 +837,7 @@ fn tuple_struct_private_new() {
 #[test]
 fn struct_custom_visibility() {
     #[derive(New)]
-    #[new(pub = "crate")]
+    #[new(pub(crate))]
     struct A {
         x: u32,
     }
@@ -786,14 +846,14 @@ fn struct_custom_visibility() {
         use super::*;
 
         #[derive(New)]
-        #[new(pub = "super")]
+        #[new(pub(super))]
         pub struct B {
             pub x: u32,
         }
     }
 
     #[derive(New)]
-    #[new(pub = "self")]
+    #[new(pub(self))]
     struct C {
         x: u32,
     }
@@ -811,19 +871,19 @@ fn struct_custom_visibility() {
 #[test]
 fn tuple_struct_custom_visibility() {
     #[derive(New)]
-    #[new(pub = "crate")]
+    #[new(pub(crate))]
     struct A(u32);
 
     mod nested {
         use super::*;
 
         #[derive(New)]
-        #[new(pub = "super")]
+        #[new(pub(super))]
         pub struct B(pub u32);
     }
 
     #[derive(New)]
-    #[new(pub = "self")]
+    #[new(pub(self))]
     struct C(u32);
 
     let res = A::new(1);

@@ -14,14 +14,14 @@ pub(crate) fn process_input(
         unreachable!("Input should already be validated");
     };
 
-    let properties = constructor::collect_main_properties(&attributes)?;
-    let plan = constructor::build_constructor_plan(&fields, properties.constant)?;
+    let options = constructor::collect_main_options(&attributes)?;
+    let plan = constructor::build_constructor_plan(&fields, options.constant)?;
 
     let constructor = constructor::generate_constructor(
         &plan,
-        &properties.visibility,
-        &properties.constant_keyword,
-        &properties.constructor_name,
+        &options.visibility,
+        &options.constant_keyword,
+        &options.constructor_name,
         &quote!(Self),
     );
 

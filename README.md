@@ -338,7 +338,7 @@ Derived constant constructors are also supported, but they come with some limita
 use inew::New;
 
 #[derive(New)]
-#[new(const = true)]
+#[new(const)]
 struct MyStruct {
     x: u32,
 }
@@ -365,7 +365,7 @@ use inew::New;
 use std::marker::PhantomData;
 
 #[derive(New)]
-#[new(const = true)]
+#[new(const)]
 struct MyStruct<T> {
     x: (),
     y: PhantomData<T>,

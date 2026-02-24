@@ -15,21 +15,21 @@ pub(crate) fn process_input(
         unreachable!("Input should already be validated");
     };
 
-    let properties = constructor::collect_main_properties(&attributes)?;
+    let options = constructor::collect_main_options(&attributes)?;
     let mut constructors = Vec::new();
 
     for variant in variants {
-        let plan = constructor::build_constructor_plan(&variant.fields, properties.constant)?;
+        let plan = constructor::build_constructor_plan(&variant.fields, options.constant)?;
 
-        let prefix = &properties.constructor_name;
+        let prefix = &options.constructor_name;
         let snake_case = variant.ident.to_string().to_snake_case();
         let constructor_name = format_ident!("{}_{}", prefix, snake_case);
         let variant_ident = &variant.ident;
 
         let constructor = constructor::generate_constructor(
             &plan,
-            &properties.visibility,
-            &properties.constant_keyword,
+            &options.visibility,
+            &options.constant_keyword,
             &constructor_name,
             &quote!(Self::#variant_ident),
         );

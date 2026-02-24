@@ -20,7 +20,7 @@ quote = "1.0.44"
 proc-macro2 = "1.0.106"
 heck = "0.5.0"
 
-# no_std support https://github.com/nrc/derive-new
 [features]
 default = ["std"]
 std = []
+public-default = []
