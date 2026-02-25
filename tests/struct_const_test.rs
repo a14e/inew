@@ -514,6 +514,30 @@ fn const_tuple_struct_with_static_lifetime() {
 }
 
 #[test]
+fn const_struct_dyn_function() {
+    #[derive(New)]
+    #[new(const)]
+    struct A<'a> {
+        f: &'a dyn Fn(f32) -> String,
+    }
+
+    const F: fn(f32) -> String = |x: f32| x.to_string();
+    const RES: A = A::new(&F);
+    assert_eq!((RES.f)(3.14), "3.14");
+}
+
+#[test]
+fn const_tuple_struct_dyn_function() {
+    #[derive(New)]
+    #[new(const)]
+    struct A<'a>(&'a dyn Fn(f32) -> String);
+
+    const F: fn(f32) -> String = |x: f32| x.to_string();
+    const RES: A = A::new(&F);
+    assert_eq!((RES.0)(3.14), "3.14");
+}
+
+#[test]
 fn struct_public_new() {
     #[derive(New)]
     #[new(pub, const)]

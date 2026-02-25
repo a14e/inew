@@ -919,6 +919,34 @@ fn tuple_enum_with_static_lifetime() {
 }
 
 #[test]
+fn enum_dyn_function() {
+    #[derive(New)]
+    enum A<'a> {
+        I { f: &'a dyn Fn(f32) -> String },
+    }
+
+    let f = |x: f32| x.to_string();
+    let res = A::new_i(&f);
+    match res {
+        A::I { f } => assert_eq!((f)(3.14), "3.14"),
+    }
+}
+
+#[test]
+fn tuple_enum_dyn_function() {
+    #[derive(New)]
+    enum A<'a> {
+        I(&'a dyn Fn(f32) -> String),
+    }
+
+    let f = |x: f32| x.to_string();
+    let res = A::new_i(&f);
+    match res {
+        A::I(f) => assert_eq!((f)(3.14), "3.14"),
+    }
+}
+
+#[test]
 fn enum_public_new() {
     #[derive(Debug, PartialEq, New)]
     #[new(pub)]
@@ -1168,4 +1196,44 @@ fn tuple_enum_constructor_rename_new() {
 
     let res4 = A::create_xyz(4);
     assert_eq!(res4, A::XYZ(4));
+}
+
+#[test]
+fn enum_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix)]
+    enum A {
+        I { x: u32 },
+        J { y: u64 },
+        K { z: u8 },
+    }
+
+    let res = A::i(1);
+    assert_eq!(res, A::I { x: 1 });
+
+    let res2 = A::j(2);
+    assert_eq!(res2, A::J { y: 2 });
+
+    let res3 = A::k(3);
+    assert_eq!(res3, A::K { z: 3 });
+}
+
+#[test]
+fn tuple_enum_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix)]
+    enum A {
+        I(u32),
+        J(u64),
+        K(u8),
+    }
+
+    let res = A::i(1);
+    assert_eq!(res, A::I(1));
+
+    let res2 = A::j(2);
+    assert_eq!(res2, A::J(2));
+
+    let res3 = A::k(3);
+    assert_eq!(res3, A::K(3));
 }

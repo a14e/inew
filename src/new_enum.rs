@@ -3,7 +3,10 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Attribute, Data, DataEnum, Generics};
 
-use crate::constructor;
+use crate::{
+    constructor::{generator, linter, options, plan},
+    ItemKind,
+};
 
 pub(crate) fn process_input(
     ident: Ident,
@@ -15,18 +18,22 @@ pub(crate) fn process_input(
         unreachable!("Input should already be validated");
     };
 
-    let options = constructor::collect_main_options(&attributes)?;
+    let options = options::collect(&attributes, ItemKind::Enum)?;
     let mut constructors = Vec::new();
 
     for variant in variants {
-        let plan = constructor::build_constructor_plan(&variant.fields, options.constant)?;
+        let plan = plan::build(&variant.fields, options.constant)?;
 
         let prefix = &options.constructor_name;
         let snake_case = variant.ident.to_string().to_snake_case();
-        let constructor_name = format_ident!("{}_{}", prefix, snake_case);
+        let constructor_name = if options.no_prefix {
+            format_ident!("{}", snake_case)
+        } else {
+            format_ident!("{}_{}", prefix, snake_case)
+        };
         let variant_ident = &variant.ident;
 
-        let constructor = constructor::generate_constructor(
+        let constructor = generator::generate(
             &plan,
             &options.visibility,
             &options.constant_keyword,
@@ -38,8 +45,10 @@ pub(crate) fn process_input(
     }
 
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
+    let lint_attributes = linter::collect_attributes(&attributes);
 
     Ok(quote! {
+        #(#lint_attributes)*
         #[automatically_derived]
         impl #impl_generics #ident #type_generics #where_clause {
             #(#constructors)*

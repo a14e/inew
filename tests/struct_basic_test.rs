@@ -138,7 +138,7 @@ fn tuple_struct_use_alias() {
     #[derive(New)]
     struct A(S);
 
-    let res= A::new(S(1));
+    let res = A::new(S(1));
     assert_eq!(res.0 .0, 1);
 }
 
@@ -169,7 +169,7 @@ fn struct_phantom_data_auto_default() {
         x: PhantomData<T>,
     }
 
-    let res= A::<u32>::new();
+    let res = A::<u32>::new();
     assert_eq!(res.x, PhantomData);
 }
 
@@ -806,6 +806,28 @@ fn tuple_struct_with_static_lifetime() {
 
     let res = A::new(&X);
     assert_eq!(res.0, "abc");
+}
+
+#[test]
+fn struct_dyn_function() {
+    #[derive(New)]
+    struct A<'a> {
+        f: &'a dyn Fn(f32) -> String,
+    }
+
+    let f = |x: f32| x.to_string();
+    let res = A::new(&f);
+    assert_eq!((res.f)(3.14), "3.14");
+}
+
+#[test]
+fn tuple_struct_dyn_function() {
+    #[derive(New)]
+    struct A<'a>(&'a dyn Fn(f32) -> String);
+
+    let f = |x: f32| x.to_string();
+    let res = A::new(&f);
+    assert_eq!((res.0)(3.14), "3.14");
 }
 
 #[test]
