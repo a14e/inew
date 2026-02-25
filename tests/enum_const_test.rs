@@ -138,6 +138,44 @@ fn const_tuple_enum_type_alias() {
 }
 
 #[test]
+fn enum_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(const)]
+    enum A {
+        I { x: S },
+    }
+
+    const RES: A = A::new_i(S(1));
+    assert_eq!(RES, A::I { x: S(1) });
+}
+
+#[test]
+fn tuple_enum_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(const)]
+    enum A {
+        I(S),
+    }
+
+    const RES: A = A::new_i(S(1));
+    assert_eq!(RES, A::I(S(1)));
+}
+
+#[test]
 fn const_enum_mixed_variants() {
     #[derive(Debug, PartialEq, New)]
     #[new(const)]

@@ -109,6 +109,40 @@ fn tuple_struct_type_alias() {
 }
 
 #[test]
+fn struct_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(New)]
+    struct A {
+        x: S,
+    }
+
+    let res = A::new(S(1));
+    assert_eq!(res.x.0, 1);
+}
+
+#[test]
+fn tuple_struct_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(New)]
+    struct A(S);
+
+    let res= A::new(S(1));
+    assert_eq!(res.0 .0, 1);
+}
+
+#[test]
 fn struct_unit_auto_default() {
     #[derive(New)]
     struct A {
@@ -135,7 +169,7 @@ fn struct_phantom_data_auto_default() {
         x: PhantomData<T>,
     }
 
-    let res: A<u32> = A::new();
+    let res= A::<u32>::new();
     assert_eq!(res.x, PhantomData);
 }
 
@@ -144,7 +178,7 @@ fn tuple_struct_phantom_data_auto_default() {
     #[derive(New)]
     struct A<T>(PhantomData<T>);
 
-    let res: A<u32> = A::new();
+    let res = A::<u32>::new();
     assert_eq!(res.0, PhantomData);
 }
 
@@ -513,7 +547,7 @@ fn tuple_struct_into_iter() {
 }
 
 #[test]
-fn struct_alias_into_iter() {
+fn struct_type_alias_into_iter() {
     type X = Vec<u32>;
 
     #[derive(New)]
@@ -527,7 +561,7 @@ fn struct_alias_into_iter() {
 }
 
 #[test]
-fn tuple_struct_alias_into_iter() {
+fn tuple_struct_type_alias_into_iter() {
     type X = Vec<u32>;
 
     #[derive(New)]
@@ -559,7 +593,7 @@ fn tuple_struct_into_nested_iter() {
 }
 
 #[test]
-fn struct_alias_into_nested_iter() {
+fn struct_type_alias_into_nested_iter() {
     type X = Vec<u32>;
     type Y = Vec<X>;
 
@@ -574,7 +608,7 @@ fn struct_alias_into_nested_iter() {
 }
 
 #[test]
-fn tuple_struct_alias_into_nested_iter() {
+fn tuple_struct_type_alias_into_nested_iter() {
     type X = Vec<u32>;
     type Y = Vec<X>;
 

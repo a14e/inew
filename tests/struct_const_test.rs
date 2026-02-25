@@ -117,6 +117,42 @@ fn const_tuple_struct_type_alias() {
 }
 
 #[test]
+fn const_struct_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(New)]
+    #[new(const)]
+    struct A {
+        x: S,
+    }
+
+    const RES: A = A::new(S(1));
+    assert_eq!(RES.x.0, 1);
+}
+
+#[test]
+fn const_tuple_struct_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(New)]
+    #[new(const)]
+    struct A(S);
+
+    const RES: A = A::new(S(1));
+    assert_eq!(RES.0 .0, 1);
+}
+
+#[test]
 fn const_struct_unit_auto_default() {
     #[derive(New)]
     #[new(const)]

@@ -129,6 +129,42 @@ fn tuple_enum_type_alias() {
 }
 
 #[test]
+fn enum_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(Debug, PartialEq, New)]
+    enum A {
+        I { x: S },
+    }
+
+    let res = A::new_i(S(1));
+    assert_eq!(res, A::I { x: S(1) });
+}
+
+#[test]
+fn tuple_enum_use_alias() {
+    mod nested {
+        #[derive(Debug, PartialEq)]
+        pub struct Struct(pub u32);
+    }
+
+    use nested::Struct as S;
+
+    #[derive(Debug, PartialEq, New)]
+    enum A {
+        I(S),
+    }
+
+    let res = A::new_i(S(1));
+    assert_eq!(res, A::I(S(1)));
+}
+
+#[test]
 fn enum_mixed_variants() {
     #[derive(Debug, PartialEq, New)]
     enum MyEnum {
@@ -184,7 +220,7 @@ fn enum_phantom_data_auto_default() {
         I { x: PhantomData<T> },
     }
 
-    let res: A<u32> = A::new_i();
+    let res = A::<u32>::new_i();
     assert_eq!(res, A::I { x: PhantomData });
 }
 
@@ -195,7 +231,7 @@ fn tuple_enum_phantom_data_auto_default() {
         I(PhantomData<T>),
     }
 
-    let res: A<u32> = A::new_i();
+    let res = A::<u32>::new_i();
     assert_eq!(res, A::I(PhantomData));
 }
 
@@ -595,7 +631,7 @@ fn tuple_enum_into_iter() {
 }
 
 #[test]
-fn enum_alias_into_iter() {
+fn enum_type_alias_into_iter() {
     type X = Vec<u32>;
 
     #[derive(Debug, PartialEq, New)]
@@ -611,7 +647,7 @@ fn enum_alias_into_iter() {
 }
 
 #[test]
-fn tuple_enum_alias_into_iter() {
+fn tuple_enum_type_alias_into_iter() {
     type X = Vec<u32>;
 
     #[derive(Debug, PartialEq, New)]
@@ -649,7 +685,7 @@ fn tuple_enum_into_nested_iter() {
 }
 
 #[test]
-fn enum_alias_into_nested_iter() {
+fn enum_type_alias_into_nested_iter() {
     type X = Vec<u32>;
     type Y = Vec<X>;
 
@@ -666,7 +702,7 @@ fn enum_alias_into_nested_iter() {
 }
 
 #[test]
-fn tuple_enum_alias_into_nested_iter() {
+fn tuple_enum_type_alias_into_nested_iter() {
     type X = Vec<u32>;
     type Y = Vec<X>;
 
