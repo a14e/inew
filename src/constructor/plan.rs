@@ -1,13 +1,12 @@
 use proc_macro2::{Ident, TokenStream};
-use quote::{format_ident, quote, ToTokens};
+use quote::{format_ident, ToTokens};
 use syn::{
     meta::ParseNestedMeta, punctuated::Punctuated, token::Comma, Error, Expr, Field, Fields,
     GenericArgument, PathArguments, Token, Type, TypePath, TypeTuple,
 };
 
 pub(crate) struct ConstructorPlan {
-    pub parameters: Vec<TokenStream>,
-    pub pass_values: Vec<TokenStream>,
+    pub field_datas: Vec<FieldData>,
     pub shape: VariantShape,
 }
 
@@ -18,12 +17,13 @@ pub(crate) enum VariantShape {
     Struct,
 }
 
-struct FieldData {
+pub(crate) struct FieldData {
     pub name: Ident,
     pub field_type: Type,
     pub default: DefaultValue,
+    pub optional: bool,
     pub into: bool,
-    pub into_iter: Option<IntoIterKind>,
+    pub into_iter: Option<Type>,
 }
 
 enum IntoIterKind {
@@ -31,24 +31,31 @@ enum IntoIterKind {
     Explicit(Box<Type>),
 }
 
-enum DefaultValue {
+pub(crate) enum DefaultValue {
     None,
     Unit,
     PhantomData,
     Trait,
-    CustomFunction(TokenStream),
+    CustomExpression(TokenStream),
 }
 
 pub(crate) fn build(fields: &Fields, is_const: bool) -> syn::Result<ConstructorPlan> {
     let punctuated = extract_punctuated_fields(fields);
-    let field_data = collect_field_datas(&punctuated)?;
+    let field_datas = collect_field_datas(&punctuated)?;
 
     if is_const {
-        for field in &field_data {
+        for field in &field_datas {
             if matches!(field.default, DefaultValue::Trait) {
                 return Err(Error::new_spanned(
                     &field.name,
                     "`default` cannot be used in constant constructors.",
+                ));
+            }
+
+            if field.optional && matches!(field.default, DefaultValue::None) {
+                return Err(Error::new_spanned(
+                &field.name,
+                "`optional` without an explicit `default = ...` cannot be used in constant constructors.",
                 ));
             }
 
@@ -69,15 +76,11 @@ pub(crate) fn build(fields: &Fields, is_const: bool) -> syn::Result<ConstructorP
     }
 
     let shape = extract_shape(fields);
-    let is_named = shape == VariantShape::Struct;
-    let defaults = build_default_initializers(&field_data, is_named);
-    let (parameters, pass_values) = build_constructor_parameters(field_data, defaults, is_named)?;
+    Ok(ConstructorPlan { field_datas, shape })
+}
 
-    Ok(ConstructorPlan {
-        parameters,
-        pass_values,
-        shape,
-    })
+fn is_auto_default_type(ty: &Type) -> bool {
+    is_phantom_data(ty) || matches!(ty, Type::Tuple(TypeTuple { elems, .. }) if elems.is_empty())
 }
 
 fn extract_punctuated_fields(fields: &Fields) -> Punctuated<Field, Comma> {
@@ -102,19 +105,29 @@ fn collect_field_data(index: usize, field: &Field) -> syn::Result<FieldData> {
         .clone()
         .unwrap_or_else(|| format_ident!("_{}", index));
     let ty = field.ty.clone();
-    let (default, into, into_iter) = collect_field_options(field)?;
+    let (default, optional, into, into_iter_kind) = collect_field_options(field)?;
+    let into_iter = match into_iter_kind {
+        Some(IntoIterKind::Inferred) => Some(extract_into_iter_type(&ty)?),
+        Some(IntoIterKind::Explicit(value)) => Some(*value),
+        None => None,
+    };
 
     Ok(FieldData {
         name: ident,
         field_type: ty,
         default,
+        optional,
         into,
         into_iter,
     })
 }
 
-fn collect_field_options(field: &Field) -> syn::Result<(DefaultValue, bool, Option<IntoIterKind>)> {
+fn collect_field_options(
+    field: &Field,
+) -> syn::Result<(DefaultValue, bool, bool, Option<IntoIterKind>)> {
     let mut default_value = DefaultValue::None;
+    let mut explicit_default = false;
+    let mut optional = false;
     let mut into = false;
     let mut into_iter = None;
 
@@ -138,7 +151,14 @@ fn collect_field_options(field: &Field) -> syn::Result<(DefaultValue, bool, Opti
 
         attribute.parse_nested_meta(|meta| {
             has_options = true;
-            field_options_parser(meta, &mut default_value, &mut into, &mut into_iter)
+            field_options_parser(
+                meta,
+                &mut default_value,
+                &mut explicit_default,
+                &mut optional,
+                &mut into,
+                &mut into_iter,
+            )
         })?;
 
         if !has_options {
@@ -150,18 +170,36 @@ fn collect_field_options(field: &Field) -> syn::Result<(DefaultValue, bool, Opti
     }
 
     detect_automatic_defaults(&mut default_value, field);
-    check_invalid_field_options(field, &default_value, into, &into_iter)?;
-    Ok((default_value, into, into_iter))
+    check_invalid_field_options(
+        field,
+        &default_value,
+        explicit_default,
+        optional,
+        into,
+        &into_iter,
+    )?;
+    Ok((default_value, optional, into, into_iter))
 }
 
 fn field_options_parser(
     meta: ParseNestedMeta<'_>,
     default_value: &mut DefaultValue,
+    explicit_default: &mut bool,
+    optional: &mut bool,
     into: &mut bool,
     into_iter: &mut Option<IntoIterKind>,
 ) -> syn::Result<()> {
+    if meta.path.is_ident("option") {
+        return Err(meta.error("Unknown argument `option`. Did you mean `optional`?"));
+    }
+
     if meta.path.is_ident("default") {
+        *explicit_default = true;
         return parse_default(meta, default_value);
+    }
+
+    if meta.path.is_ident("optional") {
+        return parse_optional(meta, optional);
     }
 
     if meta.path.is_ident("into") {
@@ -172,7 +210,7 @@ fn field_options_parser(
         return parse_into_iter(meta, into_iter);
     }
 
-    Err(meta.error("Unknown argument in `#[new(...)]` for field. Expected one of: `default`, `into`, `into_iter`."))
+    Err(meta.error("Unknown argument in `#[new(...)]` for field. Expected one of: `default`, `optional`, `into`, `into_iter`."))
 }
 
 fn parse_default(meta: ParseNestedMeta<'_>, default_value: &mut DefaultValue) -> syn::Result<()> {
@@ -187,9 +225,19 @@ fn parse_default(meta: ParseNestedMeta<'_>, default_value: &mut DefaultValue) ->
     }
 
     // #[new(default = ...)]
-    meta.input.parse::<Token![=]>()?;
-    let default_expression = meta.input.parse::<Expr>()?;
-    *default_value = DefaultValue::CustomFunction(default_expression.into_token_stream());
+    let value = meta.value()?;
+    let default_expression: Expr = value.parse()?;
+    *default_value = DefaultValue::CustomExpression(default_expression.into_token_stream());
+    Ok(())
+}
+
+fn parse_optional(meta: ParseNestedMeta<'_>, optional: &mut bool) -> syn::Result<()> {
+    if *optional {
+        return Err(meta.error("`optional` specified more than once in `#[new(...)]`."));
+    }
+
+    // #[new(optional)]
+    *optional = true;
     Ok(())
 }
 
@@ -270,9 +318,18 @@ fn is_phantom_data(ty: &Type) -> bool {
 fn check_invalid_field_options(
     field: &Field,
     default_value: &DefaultValue,
+    explicit_default: bool,
+    optional: bool,
     into: bool,
     into_iter: &Option<IntoIterKind>,
 ) -> syn::Result<()> {
+    if matches!(default_value, DefaultValue::Trait) && optional {
+        return Err(Error::new_spanned(
+            field,
+            "Parameterless `default` is not needed when `optional` is present. Remove `default`.",
+        ));
+    }
+
     if !matches!(default_value, DefaultValue::None) && into {
         return Err(Error::new_spanned(
             field,
@@ -284,6 +341,34 @@ fn check_invalid_field_options(
         return Err(Error::new_spanned(
             field,
             "`default` cannot be combined with `into_iter` in `#[new(...)]`.",
+        ));
+    }
+
+    if explicit_default && is_auto_default_type(&field.ty) {
+        return Err(Error::new_spanned(
+            field,
+            "`default` can be skipped for fields that have automatic defaults (`()` or `PhantomData`).",
+        ));
+    }
+
+    if optional && is_auto_default_type(&field.ty) {
+        return Err(Error::new_spanned(
+            field,
+            "`optional` cannot be used on fields that have automatic defaults (`()` or `PhantomData`).",
+        ));
+    }
+
+    if optional && into {
+        return Err(Error::new_spanned(
+            field,
+            "`optional` cannot be combined with `into` in `#[new(...)]`.",
+        ));
+    }
+
+    if optional && into_iter.is_some() {
+        return Err(Error::new_spanned(
+            field,
+            "`optional` cannot be combined with `into_iter` in `#[new(...)]`.",
         ));
     }
 
@@ -305,130 +390,7 @@ fn extract_shape(fields: &Fields) -> VariantShape {
     }
 }
 
-fn build_default_initializers(
-    field_specs: &[FieldData],
-    is_named: bool,
-) -> Vec<Option<TokenStream>> {
-    field_specs
-        .iter()
-        .map(|field_data| build_default_initializer(field_data, is_named))
-        .collect()
-}
-
-fn build_default_initializer(field: &FieldData, is_named: bool) -> Option<TokenStream> {
-    let FieldData { name, default, .. } = field;
-
-    if is_named {
-        build_named_initializer(name, default)
-    } else {
-        build_unnamed_initializer(default)
-    }
-}
-
-fn build_named_initializer(name: &Ident, default: &DefaultValue) -> Option<TokenStream> {
-    use DefaultValue::{CustomFunction, PhantomData, Trait, Unit};
-
-    match default {
-        DefaultValue::None => None,
-        Unit => Some(quote!(#name: ())),
-        PhantomData => Some(quote!(#name: ::core::marker::PhantomData)),
-        Trait => Some(quote!(#name: ::core::default::Default::default())),
-        CustomFunction(function) => Some(quote!(#name: #function)),
-    }
-}
-
-fn build_unnamed_initializer(default: &DefaultValue) -> Option<TokenStream> {
-    use DefaultValue::{CustomFunction, PhantomData, Trait, Unit};
-
-    match default {
-        DefaultValue::None => None,
-        Unit => Some(quote!(())),
-        PhantomData => Some(quote!(::core::marker::PhantomData)),
-        Trait => Some(quote!(::core::default::Default::default())),
-        CustomFunction(function) => Some(quote!(#function)),
-    }
-}
-
-fn build_constructor_parameters(
-    fields: Vec<FieldData>,
-    defaults: Vec<Option<TokenStream>>,
-    is_named: bool,
-) -> syn::Result<(Vec<TokenStream>, Vec<TokenStream>)> {
-    let mut parameters = Vec::new();
-    let mut values = Vec::new();
-
-    for (field, default) in fields.into_iter().zip(defaults) {
-        let (parameter, pass_value) = build_constructor_argument(field, default, is_named)?;
-
-        if let Some(stream) = parameter {
-            parameters.push(stream);
-        }
-
-        values.push(pass_value);
-    }
-
-    Ok((parameters, values))
-}
-
-fn build_constructor_argument(
-    field: FieldData,
-    default: Option<TokenStream>,
-    is_named: bool,
-) -> syn::Result<(Option<TokenStream>, TokenStream)> {
-    let FieldData {
-        name,
-        field_type,
-        into,
-        into_iter,
-        ..
-    } = field;
-
-    match default {
-        Some(token) => Ok((None, token)),
-        None => {
-            if into {
-                let parameter = quote!(#name: impl ::core::convert::Into<#field_type>);
-
-                let pass_value = if is_named {
-                    quote!(#name: #name.into())
-                } else {
-                    quote!(#name.into())
-                };
-
-                Ok((Some(parameter), pass_value))
-            } else if let Some(iter_kind) = into_iter {
-                let inner_type = match iter_kind {
-                    IntoIterKind::Inferred => extract_inner_type(&field_type)?,
-                    IntoIterKind::Explicit(ty) => *ty,
-                };
-
-                let parameter = quote!(
-                    #name: impl ::core::iter::IntoIterator<Item = #inner_type>
-                );
-
-                let pass_value = if is_named {
-                    quote!(#name: #name.into_iter().collect())
-                } else {
-                    quote!(#name.into_iter().collect())
-                };
-
-                Ok((Some(parameter), pass_value))
-            } else {
-                let parameter = quote!(#name: #field_type);
-
-                let pass_value = if is_named {
-                    quote!(#name: #name)
-                } else {
-                    quote!(#name)
-                };
-
-                Ok((Some(parameter), pass_value))
-            }
-        }
-    }
-}
-
-fn extract_inner_type(ty: &Type) -> syn::Result<Type> {
+fn extract_into_iter_type(ty: &Type) -> syn::Result<Type> {
     let Type::Path(type_path) = ty else {
         return Err(Error::new_spanned(
             ty,

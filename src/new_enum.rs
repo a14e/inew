@@ -33,7 +33,7 @@ pub(crate) fn process_input(
         };
         let variant_ident = &variant.ident;
 
-        let constructor = generator::generate(
+        let constructor = generator::generate_constructor(
             &plan,
             &options.visibility,
             &options.constant_keyword,

@@ -11,14 +11,14 @@ mod nested {
         }
 
         #[derive(New)]
-        #[new(pub(in crate::nested))]
-        pub struct B(pub u64);
-
-        #[derive(New)]
         #[new(pub(in crate::nested), const)]
-        pub struct C {
+        pub struct B {
             pub x: u32,
         }
+
+        #[derive(New)]
+        #[new(pub(in crate::nested))]
+        pub struct C(pub u64);
 
         #[derive(New)]
         #[new(pub(in crate::nested), const)]
@@ -31,13 +31,13 @@ mod nested {
     }
 
     pub fn test_b() {
-        let res = B::new(2);
-        assert_eq!(res.0, 2);
+        const RES: B = B::new(2);
+        assert_eq!(RES.x, 2);
     }
 
     pub fn test_c() {
-        const RES: C = C::new(3);
-        assert_eq!(RES.x, 3);
+        let res = C::new(3);
+        assert_eq!(res.0, 3);
     }
 
     pub fn test_d() {
@@ -52,12 +52,12 @@ fn struct_pub_in_visibility() {
 }
 
 #[test]
-fn tuple_struct_pub_in_visibility() {
+fn const_struct_pub_in_visibility() {
     nested::test_b();
 }
 
 #[test]
-fn const_struct_pub_in_visibility() {
+fn tuple_struct_pub_in_visibility() {
     nested::test_c();
 }
 

@@ -11,15 +11,15 @@ mod nested {
         }
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub(in crate::nested))]
+        #[new(pub(in crate::nested), const)]
         pub enum B {
-            I(u64),
+            I { x: u32 },
         }
 
         #[derive(Debug, PartialEq, New)]
-        #[new(pub(in crate::nested), const)]
+        #[new(pub(in crate::nested))]
         pub enum C {
-            I { x: u32 },
+            I(u64),
         }
 
         #[derive(Debug, PartialEq, New)]
@@ -35,13 +35,13 @@ mod nested {
     }
 
     pub fn test_b() {
-        let res = B::new_i(2);
-        assert_eq!(res, B::I(2));
+        const RES: B = B::new_i(2);
+        assert_eq!(RES, B::I { x: 2 });
     }
 
     pub fn test_c() {
-        const RES: C = C::new_i(3);
-        assert_eq!(RES, C::I { x: 3 });
+        let res = C::new_i(3);
+        assert_eq!(res, C::I(3));
     }
 
     pub fn test_d() {
@@ -56,12 +56,12 @@ fn enum_pub_in_visibility() {
 }
 
 #[test]
-fn tuple_enum_pub_in_visibility() {
+fn const_enum_pub_in_visibility() {
     nested::test_b();
 }
 
 #[test]
-fn const_enum_pub_in_visibility() {
+fn tuple_enum_pub_in_visibility() {
     nested::test_c();
 }
 

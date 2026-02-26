@@ -20,7 +20,7 @@ pub(crate) fn process_input(
     let options = options::collect(&attributes, ItemKind::Struct)?;
     let plan = plan::build(&fields, options.constant)?;
 
-    let constructor = generator::generate(
+    let constructor = generator::generate_constructor(
         &plan,
         &options.visibility,
         &options.constant_keyword,
