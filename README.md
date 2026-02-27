@@ -6,22 +6,67 @@ making the process more declarative and enjoyable, while freeing up time for mor
 
 The purpose of this library is to cover the most basic and frequent use cases.
 If you want more complex generation, you
-should probably take a look at [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
+should probably take a look at [rust-derive-builder](https://docs.rs/derive_builder/latest/derive_builder/)
 
-## How to add the library to your project?
+## Table of contents
 
-Just add to Cargo.toml
+- [Adding the library to your project](#adding-the-library-to-your-project)
+  - [Мinimum supported Rust version](#minimum-supported-rust-version)
+  - [Breaking changes](#breaking-changes)
+  - [Feature flags](#feature-flags)
+    - [Standard library support](#standard-library-support)
+    - [Default constructor visibility](#default-constructor-visibility)
+- [Usage examples](#usage-examples)
+  - [Structs](#structs)
+    - [Tuple structs](#tuple-structs)
+    - [Unit-like structs](#unit-like-structs)
+  - [Enums](#enums)
+  - [Use and type aliases](#use-and-type-aliases)
+  - [Default fields and custom initializers](#default-fields-and-custom-initializers)
+    - [Annotating default fields](#annotating-default-fields)
+    - [Automatic default fields](#automatic-default-fields)
+    - [Optional default values](#optional-default-values)
+  - [Into trait helpers](#into-trait-helpers)
+    - [Into paramaters](#into-paramaters)
+    - [IntoIter parameters](#intoiter-parameters)
+    - [Explicit IntoIter parameters](#explicit-intoiter-parameters)
+  - [Custom constructor names](#custom-constructor-names)
+    - [Custom names on structs](#custom-names-on-structs)
+    - [Custom names on enums](#custom-names-on-enums)
+    - [Enum constructors without prefixes](#enum-constructors-without-prefixes)
+  - [Visibility of derived constructors](#visibility-of-derived-constructors)
+    - [Default visibility](#default-visibility)
+    - [Explicit visibility options](#explicit-visibility-options)
+  - [Generics and lifetimes](#generics-and-lifetimes)
+    - [Generics](#generics)
+    - [Generic bounds](#generic-bounds)
+    - [Lifetimes](#lifetimes)
+    - [Static lifetimes](#static-lifetimes)
+    - [Dynamic dispatch](#dynamic-dispatch)
+  - [Constant constructors](#constant-constructors)
+- [Special thanks to](#special-thanks-to)
+- [License](#license)
+- [Contributing](#contributing)
+- [Comparison with derive-new](#comparison-with-derive-new)
+- [Related projects](#related-projects)
+  - [Rust libraries](#rust-libraries)
+  - [Java libraries](#java-libraries)
+  - [Programming languages](#programming-languages)
+
+## Adding the library to your project
+
+Add the dependency to your `Cargo.toml`.
 
 ```toml
 [dependencies]
 inew = "0.4.0"
 ```
 
-## Мinimum supported Rust version
+### Minimum supported Rust version
 
 The library requires a minimum Rust version of `1.80.0`.
 
-## Breaking changes
+### Breaking changes
 
 The `v0.4.0` release has breaking changes which may affect older projects:
 
@@ -29,7 +74,7 @@ The `v0.4.0` release has breaking changes which may affect older projects:
 This was changed to mimic default Rust visibility behavior.
 The old behavior can be restored, see [Default constructor visibility](#default-constructor-visibility).
 
-## Feature flags
+### Feature flags
 
 ### Standard library support
 
@@ -109,7 +154,7 @@ By default:
 - All the derived struct constructors will have the `new` name.
 See [Custom constructor names](#custom-constructor-names) for renaming options.
 
-### Tuple structs
+#### Tuple structs
 
 Tuple structs are fully supported as well, and they work the same as normal structs.
 
@@ -126,7 +171,7 @@ fn main() {
 
 Parameter names are numbers prefixed by and underscore, like `_0`, `_1`, `_2`, and so on.
 
-### Unit-like structs
+#### Unit-like structs
 
 Unit-like structs also work as expected, and they generate a parameterless constructor:
 
@@ -170,6 +215,30 @@ See [Custom constructor names](#custom-constructor-names) for renaming options.
 - The variant name is added after the prefix, but converted to `snake_case`.
 
 Structs and enums have feature parity, so most of the examples below will use structs to keep them short.
+
+### Propagation of lint attributes
+
+The macro propagates lint attributes from the struct definition to the generated constructors.
+For example, the following code will NOT generate a warning for Clippy's `too_many_arguments` lint:
+
+```rust
+#![warn(clippy::too_many_arguments)]
+
+use inew::New;
+
+#[allow(clippy::too_many_arguments)]
+#[derive(New)]
+struct MyStruct {
+    a: i32,
+    b: i32,
+    c: i32,
+    d: i32,
+    e: i32,
+    f: i32,
+    g: i32,
+    h: i32,
+}
+```
 
 ### Use and type aliases
 
@@ -275,6 +344,47 @@ fn main() {
     let s = MyStruct::<u32>::new();
 }
 ```
+
+#### Optional default values
+
+Default fields can be annotated with `#[new(optional)]` to make them optional.
+This turns the parameter into `Option<T>` instead of `T`.
+
+```rust
+use inew::New;
+use std::collections::HashSet;
+
+macro_rules! custom_macro {
+    () => {
+        true
+    };
+}
+
+#[derive(New)]
+struct MyStruct {
+    name: String,
+    #[new(optional)]
+    some_values: HashSet<u32>,
+    #[new(default = 1 + 2, optional)]
+    entry_count: usize,
+    #[new(default = custom_func(), optional)]
+    custom_value: u32,
+    #[new(default = custom_macro!(), optional)]
+    is_enabled: bool,
+}
+
+fn custom_func() -> u32 {
+    42u32
+}
+
+fn main() {
+    let s = MyStruct::new("123".to_owned(), None, None, None, None);
+    let s2 = MyStruct::new("abc".to_owned(), Some(HashSet::new()), Some(10), Some(100), Some(false));
+}
+```
+
+Note that `optional` acts as a modifier of the `default` attribute, meaning that it can't be used alone for most cases.
+The only exception is `#[new(optional)]`, which implies and doesn't require adding `default`.
 
 ### Into trait helpers
 
@@ -394,6 +504,31 @@ fn main() {
     let t = MyEnum::create_third(3);
 }
 ```
+
+#### Enum constructors without prefixes
+
+If desired, the `no_prefix` option can be used to remove the prefix from generated `enum` constructors.
+Note that passing `#[new(rename = "")]` instead is not allowed.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+#[new(no_prefix)]
+enum MyEnum {
+    First,
+    Second { x: u32 },
+    Third (u32),
+}
+
+fn main() {
+    let f = MyEnum::first();
+    let s = MyEnum::second(2);
+    let t = MyEnum::third(3);
+}
+```
+
+`no_prefix` cannot be used on structs, or together with `rename = ...`
 
 ### Visibility of derived constructors
 
@@ -605,6 +740,30 @@ fn main() {
 }
 ```
 
+#### Dynamic dispatch
+
+Fields using trait objects (dynamic dispatch) are fully supported, including borrowed `dyn` traits with lifetimes.
+
+```rust
+use inew::New;
+
+#[derive(New)]
+struct MyStruct<'a> {
+    function: &'a dyn Fn(f32, f32) -> f32,
+}
+
+fn main() {
+    let add = |x: f32, y: f32| x + y;
+    let subtract = |x: f32, y: f32| x - y;
+
+    let mut s = MyStruct::new(&add);
+    (s.function)(1.0, 2.0);
+
+    s.function = &subtract;
+    (s.function)(1.0, 2.0);
+}
+```
+
 ### Constant constructors
 
 Constructors can be generated as `const` functions using `#[new(const)]`, which allows usage in them in constant contexts.
@@ -650,34 +809,40 @@ Just write tests and submit merge requests.
 
 ## Comparison with derive-new
 
-There is a very similar library with almost the same set of features and syntax, [derive-new](https://github.com/nrc/derive-new).
+There is a very similar library with similar features and sytax, [derive-new](https://docs.rs/derive_new/latest/derive_new/).
 Below is a list of differences in the table:
 
-| Feature                                 | INew | derive-new |
-|-----------------------------------------|------|------------|
-| Tuple structs support                   | Yes  | Yes        |
-| Enum support                            | Yes  | Yes        |
-| Default values for fields               | Yes  | Yes        |
-| Into parameters support                 | Yes  | Yes        |
-| IntoIter parameters support             | Yes  | Yes        |
-| Constructor visibility settings         | Yes  | No         |
-| Custom constructor names                | Yes  | No         |
-| Generics and lifetimes support          | Yes  | Yes        |
-| Constant constructor generation         | Yes  | No         |
+| Feature                         | INew | derive-new |
+|---------------------------------|------|------------|
+| Tuple structs support           | Yes  | Yes        |
+| Enum support                    | Yes  | Yes        |
+| Propagation of lint attributes  | Yes  | Yes        |
+| Default values for fields       | Yes  | Yes        |
+| Optional default values         | Yes  | No         |
+| Into parameters support         | Yes  | Yes        |
+| IntoIter parameters support     | Yes  | Yes        |
+| Constructor visibility settings | Yes  | No         |
+| Custom constructor names        | Yes  | No         |
+| Generics and lifetimes support  | Yes  | Yes        |
+| Constant constructor generation | Yes  | No         |
 
 ## Related projects
 
 ### Rust libraries
 
-- [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
-- [derive-new](https://github.com/nrc/derive-new)
-- [derive_more](https://github.com/JelteF/derive_more)
+- [rust-derive-builder](https://docs.rs/derive_builder/latest/derive_builder/)
+- [derive-new](https://docs.rs/derive_new/latest/derive_new/)
+- [derive_more](https://docs.rs/derive_more/latest/derive_more/)
 
 ### Java libraries
 
-- [lombok](https://github.com/projectlombok/lombok)
+- [lombok](https://projectlombok.org/)
 
-### Non-library projects
+### Programming languages
 
-Functionality is also built into the Scala, Kotlin, and Java languages for entities such
-as  `case class`, `data class`, `record`
+Similar functionality is also built into other programming languages, such as:
+
+- Java's [`record`](https://docs.oracle.com/en/java/javase/25/language/records.html)
+- Kotlin's [`data class`](https://kotlinlang.org/docs/data-classes.html)
+- Python's [`@dataclass`](https://docs.python.org/3/library/dataclasses.html)
+- Scala's [`case class`](https://docs.scala-lang.org/tour/case-classes.html)
