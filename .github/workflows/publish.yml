@@ -20,7 +20,9 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
 
       - name: Run tests
-        run: cargo test --workspace
+        run: |
+          cargo test
+          cargo test --no-default-features
 
       - name: Publish INew to crates.io
         run: cargo publish --token ${{ secrets.CARGO_REGISTRY_TOKEN }}

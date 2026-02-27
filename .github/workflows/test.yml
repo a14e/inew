@@ -22,5 +22,5 @@ jobs:
       - name: Test
         run: |
           rustc --version && cargo --version
-          cargo test --workspace
-          cargo test --workspace --no-default-features
+          cargo test
+          cargo test --no-default-features

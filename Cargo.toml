@@ -27,3 +27,6 @@ trybuild = "1.0.116"
 default = ["std"]
 std = []
 public-default = []
+
+[workspace]
+members = ["fail_crate"]
