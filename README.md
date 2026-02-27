@@ -821,7 +821,7 @@ Below is a list of differences in the table:
 | Optional default values         | Yes  | No         |
 | Into parameters support         | Yes  | Yes        |
 | IntoIter parameters support     | Yes  | Yes        |
-| Constructor visibility settings | Yes  | No         |
+| Constructor visibility settings | Yes  | Yes        |
 | Custom constructor names        | Yes  | No         |
 | Generics and lifetimes support  | Yes  | Yes        |
 | Constant constructor generation | Yes  | No         |

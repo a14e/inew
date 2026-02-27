@@ -1,5 +1,11 @@
-use inew::New;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
 use std::marker::PhantomData;
+#[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+
+use inew::New;
 
 #[test]
 fn struct_unit_auto_default() {
@@ -127,6 +133,7 @@ fn const_tuple_struct_core_phantom_data_auto_default() {
     assert_eq!(RES.0, PhantomData);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn struct_std_phantom_data_auto_default() {
     #[derive(New)]
@@ -138,6 +145,7 @@ fn struct_std_phantom_data_auto_default() {
     assert_eq!(res.x, PhantomData);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn const_struct_std_phantom_data_auto_default() {
     #[derive(New)]
@@ -150,6 +158,7 @@ fn const_struct_std_phantom_data_auto_default() {
     assert_eq!(RES.x, PhantomData);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn tuple_struct_std_phantom_data_auto_default() {
     #[derive(New)]
@@ -159,6 +168,7 @@ fn tuple_struct_std_phantom_data_auto_default() {
     assert_eq!(res.0, PhantomData);
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn const_tuple_struct_std_phantom_data_auto_default() {
     #[derive(New)]

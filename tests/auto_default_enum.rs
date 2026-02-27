@@ -1,5 +1,11 @@
-use inew::New;
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
 use std::marker::PhantomData;
+#[cfg(not(feature = "std"))]
+use core::marker::PhantomData;
+
+use inew::New;
 
 #[test]
 fn enum_unit_auto_default() {
@@ -93,6 +99,7 @@ fn const_tuple_enum_phantom_data_auto_default() {
     assert_eq!(RES, A::I(PhantomData));
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn enum_std_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]
@@ -104,6 +111,7 @@ fn enum_std_phantom_data_auto_default() {
     assert_eq!(res, A::I { x: PhantomData });
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn const_enum_std_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]
@@ -116,6 +124,7 @@ fn const_enum_std_phantom_data_auto_default() {
     assert_eq!(RES, A::I { x: PhantomData });
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn tuple_enum_std_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]
@@ -127,6 +136,7 @@ fn tuple_enum_std_phantom_data_auto_default() {
     assert_eq!(res, A::I(PhantomData));
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn const_tuple_enum_std_phantom_data_auto_default() {
     #[derive(Debug, PartialEq, New)]

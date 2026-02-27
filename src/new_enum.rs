@@ -13,7 +13,7 @@ pub(crate) fn process_input(
 ) -> syn::Result<TokenStream> {
     let options = options::collect(&attributes, ItemKind::Enum)?;
 
-    if variants.len() == 0 {
+    if variants.is_empty() {
         return Ok(quote!());
     }
 

@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 mod nested {
     use crate::nested::nested2::{A, B, C, D};
 

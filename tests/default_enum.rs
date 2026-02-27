@@ -1,3 +1,10 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(feature = "std"))]
+extern crate alloc;
+#[cfg(not(feature = "std"))]
+use alloc::{vec, vec::{Vec}};
+
 use inew::New;
 
 #[test]
@@ -158,6 +165,7 @@ fn const_tuple_enum_with_default_custom_macro() {
     assert_eq!(RES, A::I(2, 7));
 }
 
+#[cfg(feature = "std")]
 #[test]
 fn enum_with_default_allocation_macro() {
     #[derive(Debug, PartialEq, New)]
