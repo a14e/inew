@@ -1,0 +1,5 @@
+error: `no_prefix` is only supported on enums.
+ --> fail_crate/tests/no_prefix_on_struct.rs:4:7
+  |
+4 | #[new(no_prefix)]
+  |       ^^^^^^^^^

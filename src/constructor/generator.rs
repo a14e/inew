@@ -12,7 +12,8 @@ pub(crate) fn generate_constructor(
 ) -> TokenStream {
     let defaults = build_default_expressions(&plan.field_datas);
     let is_named = plan.shape == VariantShape::Struct;
-    let (parameters, pass_values) = build_constructor_parameters(&plan.field_datas, defaults, is_named);
+    let (parameters, pass_values) =
+        build_constructor_parameters(&plan.field_datas, defaults, is_named);
 
     match &plan.shape {
         VariantShape::Unit => {

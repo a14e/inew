@@ -1,0 +1,5 @@
+error: Expected path after `in` in `pub(in <path>)`.
+ --> fail_crate/tests/pub_in_no_path.rs:4:7
+  |
+4 | #[new(pub(in))]
+  |       ^^^^^^^

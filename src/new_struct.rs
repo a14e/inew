@@ -1,22 +1,15 @@
 use proc_macro2::{Ident, TokenStream};
 use quote::quote;
-use syn::{Attribute, Data, DataStruct, Generics};
+use syn::{Attribute, Fields, Generics};
 
-use crate::{
-    constructor::{generator, linter, options, plan},
-    ItemKind,
-};
+use crate::constructor::{generator, linter, options::{self, ItemKind}, plan};
 
 pub(crate) fn process_input(
     ident: Ident,
-    data: Data,
+    fields: Fields,
     generics: Generics,
     attributes: Vec<Attribute>,
 ) -> syn::Result<TokenStream> {
-    let Data::Struct(DataStruct { fields, .. }) = data else {
-        unreachable!("Input should already be validated");
-    };
-
     let options = options::collect(&attributes, ItemKind::Struct)?;
     let plan = plan::build(&fields, options.constant)?;
 

@@ -174,7 +174,7 @@ fn tuple_struct_dyn_function() {
 
     let f = |x: f32| x.to_string();
     let res = A::new(&f);
-    assert_eq!((res.0)(3.14), "3.14");
+    assert_eq!(res.0(3.14), "3.14");
 }
 
 #[test]
@@ -185,5 +185,5 @@ fn const_tuple_struct_dyn_function() {
 
     const F: fn(f32) -> String = |x: f32| x.to_string();
     const RES: A = A::new(&F);
-    assert_eq!((RES.0)(3.14), "3.14");
+    assert_eq!(RES.0(3.14), "3.14");
 }

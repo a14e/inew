@@ -1,0 +1,5 @@
+error: `into` specified more than once in field `#[new(...)]`.
+ --> fail_crate/tests/duplicate_into.rs:5:17
+  |
+5 |     #[new(into, into)]
+  |                 ^^^^

@@ -1,0 +1,5 @@
+error: `default` specified more than once in field `#[new(...)]`.
+ --> fail_crate/tests/duplicate_default.rs:5:20
+  |
+5 |     #[new(default, default)]
+  |                    ^^^^^^^

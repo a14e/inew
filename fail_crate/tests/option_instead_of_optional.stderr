@@ -1,0 +1,5 @@
+error: Unknown argument `option`. Did you mean `optional`?
+ --> fail_crate/tests/option_instead_of_optional.rs:5:11
+  |
+5 |     #[new(option)]
+  |           ^^^^^^

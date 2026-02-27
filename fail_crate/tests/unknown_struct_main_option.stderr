@@ -1,0 +1,5 @@
+error: Unknown struct main `#[new(...)]` argument. Expected one of: `pub`, `rename`, `const`.
+ --> fail_crate/tests/unknown_struct_main_option.rs:4:7
+  |
+4 | #[new(what)]
+  |       ^^^^

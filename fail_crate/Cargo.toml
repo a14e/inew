@@ -1,0 +1,11 @@
+[package]
+name = "fail_crate"
+version = "0.0.0"
+edition = "2021"
+rust-version = "1.80.0"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+inew = { path = ".." }

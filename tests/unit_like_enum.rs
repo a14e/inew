@@ -1,6 +1,21 @@
 use inew::New;
 
 #[test]
+fn enum_with_no_variants() {
+    #[allow(dead_code)]
+    #[derive(Debug, PartialEq, New)]
+    enum A {}
+}
+
+#[test]
+fn const_enum_with_no_variants() {
+    #[allow(dead_code)]
+    #[derive(Debug, PartialEq, New)]
+    #[new(const)]
+    enum A {}
+}
+
+#[test]
 fn unit_like_enum_with_braces() {
     #[derive(Debug, PartialEq, New)]
     enum A {

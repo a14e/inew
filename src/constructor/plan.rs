@@ -48,7 +48,7 @@ pub(crate) fn build(fields: &Fields, is_const: bool) -> syn::Result<ConstructorP
             if matches!(field.default, DefaultValue::Trait) {
                 return Err(Error::new_spanned(
                     &field.name,
-                    "`default` cannot be used in constant constructors.",
+                    "Parameterless `default` cannot be used in constant constructors.",
                 ));
             }
 
@@ -141,7 +141,7 @@ fn collect_field_options(
         if seen_new_attribute {
             return Err(Error::new_spanned(
                 attribute,
-                "Multiple `#[new(...)]` attributes are not allowed.",
+                "Multiple field `#[new(...)]` attributes are not allowed.",
             ));
         }
 
@@ -164,7 +164,7 @@ fn collect_field_options(
         if !has_options {
             return Err(Error::new_spanned(
                 attribute,
-                "Expected an argument in `#[new(...)]` attribute.",
+                "Field `#[new]` requires at least one argument (e.g. `#[new(optional)]` or `#[new(default = 123)]`).",
             ));
         }
     }
@@ -210,12 +210,12 @@ fn field_options_parser(
         return parse_into_iter(meta, into_iter);
     }
 
-    Err(meta.error("Unknown argument in `#[new(...)]` for field. Expected one of: `default`, `optional`, `into`, `into_iter`."))
+    Err(meta.error("Unknown argument in field `#[new(...)]`. Expected one of: `default`, `optional`, `into`, `into_iter`."))
 }
 
 fn parse_default(meta: ParseNestedMeta<'_>, default_value: &mut DefaultValue) -> syn::Result<()> {
     if !matches!(default_value, DefaultValue::None) {
-        return Err(meta.error("`default` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`default` specified more than once in field `#[new(...)]`."));
     }
 
     // #[new(default)]
@@ -233,7 +233,7 @@ fn parse_default(meta: ParseNestedMeta<'_>, default_value: &mut DefaultValue) ->
 
 fn parse_optional(meta: ParseNestedMeta<'_>, optional: &mut bool) -> syn::Result<()> {
     if *optional {
-        return Err(meta.error("`optional` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`optional` specified more than once in field `#[new(...)]`."));
     }
 
     // #[new(optional)]
@@ -243,7 +243,7 @@ fn parse_optional(meta: ParseNestedMeta<'_>, optional: &mut bool) -> syn::Result
 
 fn parse_into(meta: ParseNestedMeta<'_>, into: &mut bool) -> syn::Result<()> {
     if *into {
-        return Err(meta.error("`into` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`into` specified more than once in field `#[new(...)]`."));
     }
 
     // #[new(into)]
@@ -256,7 +256,7 @@ fn parse_into_iter(
     into_iter: &mut Option<IntoIterKind>,
 ) -> syn::Result<()> {
     if into_iter.is_some() {
-        return Err(meta.error("`into_iter` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`into_iter` specified more than once in field `#[new(...)]`."));
     }
 
     // #[new(into_iter)]
@@ -333,14 +333,14 @@ fn check_invalid_field_options(
     if !matches!(default_value, DefaultValue::None) && into {
         return Err(Error::new_spanned(
             field,
-            "`default` cannot be combined with `into` in `#[new(...)]`.",
+            "`default` cannot be combined with `into` in field `#[new(...)]`.",
         ));
     }
 
     if !matches!(default_value, DefaultValue::None) && into_iter.is_some() {
         return Err(Error::new_spanned(
             field,
-            "`default` cannot be combined with `into_iter` in `#[new(...)]`.",
+            "`default` cannot be combined with `into_iter` in field `#[new(...)]`.",
         ));
     }
 
@@ -361,21 +361,21 @@ fn check_invalid_field_options(
     if optional && into {
         return Err(Error::new_spanned(
             field,
-            "`optional` cannot be combined with `into` in `#[new(...)]`.",
+            "`optional` cannot be combined with `into` in field `#[new(...)]`.",
         ));
     }
 
     if optional && into_iter.is_some() {
         return Err(Error::new_spanned(
             field,
-            "`optional` cannot be combined with `into_iter` in `#[new(...)]`.",
+            "`optional` cannot be combined with `into_iter` in field `#[new(...)]`.",
         ));
     }
 
     if into && into_iter.is_some() {
         return Err(Error::new_spanned(
             field,
-            "`into` cannot be combined with `into_iter` in `#[new(...)]`.",
+            "`into` cannot be combined with `into_iter` in field `#[new(...)]`.",
         ));
     }
 

@@ -317,3 +317,87 @@ fn const_tuple_enum_no_prefix() {
     const RES3: A = A::k(3);
     assert_eq!(RES3, A::K(3));
 }
+
+#[test]
+fn enum_explicit_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = true)]
+    enum A {
+        I { x: u32 },
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = false)]
+    enum B {
+        J { x: u32 },
+    }
+
+    let res = A::i(1);
+    assert_eq!(res, A::I { x: 1 });
+
+    let res2 = B::new_j(1);
+    assert_eq!(res2, B::J { x: 1 });
+}
+
+#[test]
+fn const_enum_explicit_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = true, const)]
+    enum A {
+        I { x: u32 },
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = false, const)]
+    enum B {
+        J { x: u32 },
+    }
+
+    const RES: A = A::i(1);
+    assert_eq!(RES, A::I { x: 1 });
+
+    const RES2: B = B::new_j(1);
+    assert_eq!(RES2, B::J { x: 1 });
+}
+
+#[test]
+fn tuple_enum_explicit_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = true)]
+    enum A {
+        I(u32),
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = false)]
+    enum B {
+        J(u32),
+    }
+
+    let res = A::i(1);
+    assert_eq!(res, A::I(1));
+
+    let res2 = B::new_j(1);
+    assert_eq!(res2, B::J(1));
+}
+
+#[test]
+fn const_tuple_enum_explicit_no_prefix() {
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = true, const)]
+    enum A {
+        I(u32),
+    }
+
+    #[derive(Debug, PartialEq, New)]
+    #[new(no_prefix = false, const)]
+    enum B {
+        J(u32),
+    }
+
+    const RES: A = A::i(1);
+    assert_eq!(RES, A::I(1));
+
+    const RES2: B = B::new_j(1);
+    assert_eq!(RES2, B::J(1));
+}

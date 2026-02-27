@@ -164,7 +164,7 @@ fn enum_dyn_function() {
     let f = |x: f32| x.to_string();
     let res = A::new_i(&f);
     match res {
-        A::I { f } => assert_eq!((f)(3.14), "3.14"),
+        A::I { f } => assert_eq!(f(3.14), "3.14"),
     }
 }
 
@@ -179,7 +179,7 @@ fn const_enum_dyn_function() {
     const F: fn(f32) -> String = |x: f32| x.to_string();
     const RES: A = A::new_i(&F);
     match RES {
-        A::I { f } => assert_eq!((f)(3.14), "3.14"),
+        A::I { f } => assert_eq!(f(3.14), "3.14"),
     }
 }
 
@@ -193,7 +193,7 @@ fn tuple_enum_dyn_function() {
     let f = |x: f32| x.to_string();
     let res = A::new_i(&f);
     match res {
-        A::I(f) => assert_eq!((f)(3.14), "3.14"),
+        A::I(f) => assert_eq!(f(3.14), "3.14"),
     }
 }
 
@@ -208,6 +208,6 @@ fn const_tuple_enum_dyn_function() {
     const F: fn(f32) -> String = |x: f32| x.to_string();
     const RES: A = A::new_i(&F);
     match RES {
-        A::I(f) => assert_eq!((f)(3.14), "3.14"),
+        A::I(f) => assert_eq!(f(3.14), "3.14"),
     }
 }

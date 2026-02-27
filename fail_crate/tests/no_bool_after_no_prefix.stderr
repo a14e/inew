@@ -1,0 +1,5 @@
+error: Expected boolean literal after `no_prefix =`.
+ --> fail_crate/tests/no_bool_after_no_prefix.rs:4:7
+  |
+4 | #[new(no_prefix =)]
+  |       ^^^^^^^^^^^

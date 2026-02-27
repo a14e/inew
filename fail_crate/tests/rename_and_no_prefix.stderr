@@ -1,0 +1,5 @@
+error: `rename` cannot be combined with `no_prefix` in main `#[new(...)]`.
+ --> fail_crate/tests/rename_and_no_prefix.rs:4:1
+  |
+4 | #[new(rename = "create", no_prefix)]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

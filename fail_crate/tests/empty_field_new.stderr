@@ -1,0 +1,5 @@
+error: Field `#[new]` requires at least one argument (e.g. `#[new(optional)]` or `#[new(default = 123)]`).
+ --> fail_crate/tests/empty_field_new.rs:5:5
+  |
+5 |     #[new()]
+  |     ^^^^^^^^

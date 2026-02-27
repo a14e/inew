@@ -1,0 +1,5 @@
+error: Parameterless `default` cannot be used in constant constructors.
+ --> fail_crate/tests/const_and_default.rs:7:5
+  |
+7 |     x: u32
+  |     ^

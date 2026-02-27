@@ -1,0 +1,5 @@
+error: `optional` specified more than once in field `#[new(...)]`.
+ --> fail_crate/tests/duplicate_different_optional.rs:5:21
+  |
+5 |     #[new(optional, optional = 5)]
+  |                     ^^^^^^^^

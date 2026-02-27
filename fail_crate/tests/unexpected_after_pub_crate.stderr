@@ -1,0 +1,5 @@
+error: Unexpected tokens after `crate` in `pub(...)`.
+ --> fail_crate/tests/unexpected_after_pub_crate.rs:4:7
+  |
+4 | #[new(pub(crate =))]
+  |       ^^^^^^^^^^^^

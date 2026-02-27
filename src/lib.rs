@@ -5,9 +5,7 @@ mod new_enum;
 mod new_struct;
 
 use proc_macro2::{Ident, TokenStream};
-use syn::{parse_macro_input, Attribute, Data, DeriveInput, Error, Generics};
-
-use crate::constructor::ItemKind;
+use syn::{parse_macro_input, Attribute, Data, DataEnum, DataStruct, DeriveInput, Error, Generics};
 
 // Inspired by a part of SeaORM: https://github.com/SeaQL/sea-orm/blob/master/sea-orm-macros/src/derives/active_model.rs
 #[proc_macro_derive(New, attributes(new))]
@@ -31,19 +29,14 @@ fn process_input(
     generics: Generics,
     attributes: Vec<Attribute>,
 ) -> syn::Result<TokenStream> {
-    let new_type = find_type(&ident, &data)?;
-
-    match new_type {
-        ItemKind::Struct => new_struct::process_input(ident, data, generics, attributes),
-        ItemKind::Enum => new_enum::process_input(ident, data, generics, attributes),
-    }
-}
-
-fn find_type(ident: &Ident, data: &Data) -> syn::Result<ItemKind> {
     match data {
-        Data::Struct(_) => Ok(ItemKind::Struct),
-        Data::Enum(_) => Ok(ItemKind::Enum),
-        _ => Err(syn::Error::new_spanned(
+        Data::Struct(DataStruct { fields, .. }) => {
+            new_struct::process_input(ident, fields, generics, attributes)
+        }
+        Data::Enum(DataEnum { variants, .. }) => {
+            new_enum::process_input(ident, variants, generics, attributes)
+        }
+        _ => Err(Error::new_spanned(
             ident,
             "'New' can only be derived for structs and enums",
         )),

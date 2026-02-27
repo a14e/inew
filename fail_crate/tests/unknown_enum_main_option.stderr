@@ -1,0 +1,5 @@
+error: Unknown enum main `#[new(...)]` argument. Expected one of: `pub`, `rename`, `no_prefix`, `const`.
+ --> fail_crate/tests/unknown_enum_main_option.rs:4:7
+  |
+4 | #[new(what)]
+  |       ^^^^

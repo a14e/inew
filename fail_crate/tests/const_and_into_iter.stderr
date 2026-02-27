@@ -1,0 +1,5 @@
+error: `into_iter` cannot be used in constant constructors.
+ --> fail_crate/tests/const_and_into_iter.rs:7:5
+  |
+7 |     x: Vec<u32>
+  |     ^

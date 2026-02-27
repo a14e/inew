@@ -1,0 +1,5 @@
+error: Unexpected tokens after `self` in `pub(...)`.
+ --> fail_crate/tests/unexpected_after_pub_self.rs:4:7
+  |
+4 | #[new(pub(self =))]
+  |       ^^^^^^^^^^^

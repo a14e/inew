@@ -1,0 +1,6 @@
+error: `default` cannot be combined with `into_iter` in field `#[new(...)]`.
+ --> fail_crate/tests/default_and_into_iter.rs:5:5
+  |
+5 | /     #[new(default, into_iter)]
+6 | |     x: Vec<u32>
+  | |_______________^

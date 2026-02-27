@@ -415,7 +415,7 @@ Visibility options allow specifying the constructor visibility with syntax simil
 The following forms are supported:
 
 | Attribute                    | Derived visibility                             |
-| ---------------------------- | ---------------------------------------------- |
+|------------------------------|------------------------------------------------|
 | *(nothing)*                  | Private or `pub` (depends on `public-default`) |
 | `#[new(pub)]`                | `pub`                                          |
 | `#[new(pub = true)]`         | `pub`                                          |
@@ -669,13 +669,13 @@ Below is a list of differences in the table:
 
 ### Rust libraries
 
-[rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
-[derive-new](https://github.com/nrc/derive-new)
-[derive_more](https://github.com/JelteF/derive_more)
+- [rust-derive-builder](https://github.com/colin-kiegel/rust-derive-builder)
+- [derive-new](https://github.com/nrc/derive-new)
+- [derive_more](https://github.com/JelteF/derive_more)
 
 ### Java libraries
 
-[lombok](https://github.com/projectlombok/lombok)
+- [lombok](https://github.com/projectlombok/lombok)
 
 ### Non-library projects
 

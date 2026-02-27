@@ -1,0 +1,6 @@
+error: `optional` cannot be used on fields that have automatic defaults (`()` or `PhantomData`).
+ --> fail_crate/tests/optional_unit.rs:5:5
+  |
+5 | /     #[new(optional)]
+6 | |     x: (),
+  | |_________^

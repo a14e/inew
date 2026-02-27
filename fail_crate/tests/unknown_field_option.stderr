@@ -1,0 +1,5 @@
+error: Unknown argument in field `#[new(...)]`. Expected one of: `default`, `optional`, `into`, `into_iter`.
+ --> fail_crate/tests/unknown_field_option.rs:5:11
+  |
+5 |     #[new(what)]
+  |           ^^^^

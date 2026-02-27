@@ -1,0 +1,5 @@
+error: Main `#[new]` requires at least one argument (e.g. `#[new(pub)]` or `#[new(rename = "name")]`).
+ --> fail_crate/tests/empty_main_new.rs:4:1
+  |
+4 | #[new()]
+  | ^^^^^^^^

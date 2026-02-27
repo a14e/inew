@@ -1,0 +1,5 @@
+error: Empty `rename` is not allowed. If you want enum constructors without prefixes, replace it with `no_prefix`.
+ --> fail_crate/tests/empty_rename_on_enum.rs:4:7
+  |
+4 | #[new(rename = "")]
+  |       ^^^^^^^^^^^

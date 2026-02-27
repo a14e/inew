@@ -1,0 +1,5 @@
+error: `rename` specified more than once in main `#[new(...)]`.
+ --> fail_crate/tests/duplicate_rename.rs:4:26
+  |
+4 | #[new(rename = "create", rename = "create")]
+  |                          ^^^^^^

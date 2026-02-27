@@ -4,7 +4,11 @@ use syn::{
     meta::ParseNestedMeta, parenthesized, token::Paren, Attribute, Error, LitBool, LitStr, Token,
 };
 
-use crate::ItemKind;
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum ItemKind {
+    Struct,
+    Enum,
+}
 
 pub(crate) struct MainOptions {
     pub visibility: TokenStream,
@@ -39,7 +43,7 @@ pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Res
         if seen_new_attribute {
             return Err(Error::new_spanned(
                 attribute,
-                "Multiple `#[new(...)]` attributes are not allowed.",
+                "Multiple main `#[new(...)]` attributes are not allowed.",
             ));
         }
 
@@ -61,7 +65,7 @@ pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Res
         if !has_options {
             return Err(Error::new_spanned(
                 attribute,
-                "`#[new]` requires at least one argument (e.g. `#[new(pub)]` or `#[new(rename = \"foo\")]`).",
+                "Main `#[new]` requires at least one argument (e.g. `#[new(pub)]` or `#[new(rename = \"name\")]`).",
             ));
         }
 
@@ -120,7 +124,7 @@ fn main_options_parser(
     }
 
     if meta.path.is_ident("rename") {
-        return parse_rename(meta, rename);
+        return parse_rename(meta, rename, item_kind);
     }
 
     if meta.path.is_ident("no_prefix") {
@@ -136,7 +140,7 @@ fn main_options_parser(
 
 fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> syn::Result<()> {
     if visibility.is_some() {
-        return Err(meta.error("`pub` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`pub` specified more than once in main `#[new(...)]`."));
     }
 
     // #[new(pub(...))]
@@ -198,7 +202,7 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
         }
 
         return Err(
-                meta.error("Invalid visibility inside `pub(...)`. Expected `crate`, `super`, `self`, or `in <path>`."),
+                meta.error("Unknown visibility inside `pub(...)`. Expected `crate`, `super`, `self`, or `in <path>`."),
             );
     }
 
@@ -224,9 +228,9 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
     Ok(())
 }
 
-fn parse_rename(meta: ParseNestedMeta<'_>, rename: &mut Option<Ident>) -> syn::Result<()> {
+fn parse_rename(meta: ParseNestedMeta<'_>, rename: &mut Option<Ident>, item_kind: ItemKind) -> syn::Result<()> {
     if rename.is_some() {
-        return Err(meta.error("`rename` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`rename` specified more than once in main `#[new(...)]`."));
     }
 
     if !meta.input.peek(Token![=]) {
@@ -242,6 +246,14 @@ fn parse_rename(meta: ParseNestedMeta<'_>, rename: &mut Option<Ident>) -> syn::R
 
     let lit_str = meta.input.parse::<LitStr>()?;
     let name = lit_str.value();
+
+    if name.is_empty() {
+        if item_kind == ItemKind::Enum {
+            return Err(meta.error("Empty `rename` is not allowed. If you want enum constructors without prefixes, replace it with `no_prefix`."));
+        } else {
+            return Err(meta.error("Expected non-empty string literal after `rename =`."));
+        }
+    }
 
     if syn::parse_str::<Ident>(&name).is_err() {
         return Err(Error::new_spanned(
@@ -288,7 +300,7 @@ fn parse_no_prefix(
 
 fn parse_const(meta: ParseNestedMeta<'_>, constant: &mut Option<bool>) -> syn::Result<()> {
     if constant.is_some() {
-        return Err(meta.error("`const` specified more than once in `#[new(...)]`."));
+        return Err(meta.error("`const` specified more than once in main `#[new(...)]`."));
     }
 
     // #[new(const)]
@@ -310,13 +322,13 @@ fn parse_const(meta: ParseNestedMeta<'_>, constant: &mut Option<bool>) -> syn::R
     Ok(())
 }
 
-fn unknown_argument_error(meta: &ParseNestedMeta<'_>, item_kind: ItemKind) -> syn::Error {
+fn unknown_argument_error(meta: &ParseNestedMeta<'_>, item_kind: ItemKind) -> Error {
     match item_kind {
         ItemKind::Enum => {
-            meta.error("Unknown argument. Expected one of: `pub`, `rename`, `no_prefix`, `const`.")
+            meta.error("Unknown enum main `#[new(...)]` argument. Expected one of: `pub`, `rename`, `no_prefix`, `const`.")
         }
         ItemKind::Struct => {
-            meta.error("Unknown argument. Expected one of: `pub`, `rename`, `const`.")
+            meta.error("Unknown struct main `#[new(...)]` argument. Expected one of: `pub`, `rename`, `const`.")
         }
     }
 }
@@ -325,11 +337,12 @@ fn check_invalid_main_options(
     attribute: &Attribute,
     rename: &Option<Ident>,
     no_prefix: &Option<bool>,
+
 ) -> syn::Result<()> {
     if rename.is_some() && no_prefix.is_some() {
         return Err(Error::new_spanned(
             attribute,
-            "`rename` cannot be combined with `no_prefix` in `#[new(...)]`.",
+            "`rename` cannot be combined with `no_prefix` in main `#[new(...)]`.",
         ));
     }
 

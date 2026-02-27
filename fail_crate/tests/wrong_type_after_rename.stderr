@@ -1,0 +1,5 @@
+error: Expected string literal after `rename =`.
+ --> fail_crate/tests/wrong_type_after_rename.rs:4:7
+  |
+4 | #[new(rename = true)]
+  |       ^^^^^^^^

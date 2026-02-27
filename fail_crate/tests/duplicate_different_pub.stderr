@@ -1,0 +1,5 @@
+error: `pub` specified more than once in main `#[new(...)]`.
+ --> fail_crate/tests/duplicate_different_pub.rs:4:12
+  |
+4 | #[new(pub, pub(crate))]
+  |            ^^^

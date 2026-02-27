@@ -1,0 +1,5 @@
+error: Multiple main `#[new(...)]` attributes are not allowed.
+ --> fail_crate/tests/multiple_main_new.rs:5:1
+  |
+5 | #[new(pub)]
+  | ^^^^^^^^^^^

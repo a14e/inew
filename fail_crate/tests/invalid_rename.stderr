@@ -1,0 +1,5 @@
+error: `rename` must be a valid Rust identifier.
+ --> fail_crate/tests/invalid_rename.rs:4:16
+  |
+4 | #[new(rename = "123")]
+  |                ^^^^^

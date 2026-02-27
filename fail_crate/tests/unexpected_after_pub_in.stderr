@@ -1,0 +1,5 @@
+error: Unexpected tokens after `in <path>` in `pub(...)`.
+ --> fail_crate/tests/unexpected_after_pub_in.rs:4:7
+  |
+4 | #[new(pub(in crate =))]
+  |       ^^^^^^^^^^^^^^^

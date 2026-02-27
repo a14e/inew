@@ -1,0 +1,5 @@
+error: Expected `rename = "name"`.
+ --> fail_crate/tests/rename_no_equals_sign.rs:4:7
+  |
+4 | #[new(rename)]
+  |       ^^^^^^

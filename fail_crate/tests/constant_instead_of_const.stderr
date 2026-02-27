@@ -1,0 +1,5 @@
+error: Unknown argument `constant`. Did you mean `const`?
+ --> fail_crate/tests/constant_instead_of_const.rs:4:7
+  |
+4 | #[new(constant)]
+  |       ^^^^^^^^

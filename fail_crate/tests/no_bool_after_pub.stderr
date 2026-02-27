@@ -1,0 +1,5 @@
+error: Expected boolean literal after `pub =`.
+ --> fail_crate/tests/no_bool_after_pub.rs:4:7
+  |
+4 | #[new(pub =)]
+  |       ^^^^^

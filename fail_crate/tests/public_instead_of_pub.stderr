@@ -1,0 +1,5 @@
+error: Unknown argument `public`. Did you mean `pub`?
+ --> fail_crate/tests/public_instead_of_pub.rs:4:7
+  |
+4 | #[new(public)]
+  |       ^^^^^^

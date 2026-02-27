@@ -1,0 +1,5 @@
+error: Expected non-empty string literal after `rename =`.
+ --> fail_crate/tests/empty_rename_on_struct.rs:4:7
+  |
+4 | #[new(rename = "")]
+  |       ^^^^^^^^^^^

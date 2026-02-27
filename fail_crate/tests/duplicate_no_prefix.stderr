@@ -1,0 +1,5 @@
+error: `no_prefix` specified more than once.
+ --> fail_crate/tests/duplicate_no_prefix.rs:4:18
+  |
+4 | #[new(no_prefix, no_prefix)]
+  |                  ^^^^^^^^^

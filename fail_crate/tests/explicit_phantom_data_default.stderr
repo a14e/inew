@@ -1,0 +1,6 @@
+error: `default` can be skipped for fields that have automatic defaults (`()` or `PhantomData`).
+ --> fail_crate/tests/explicit_phantom_data_default.rs:6:5
+  |
+6 | /     #[new(default)]
+7 | |     x: PhantomData<T>,
+  | |_____________________^

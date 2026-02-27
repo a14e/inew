@@ -1,0 +1,5 @@
+error: Multiple field `#[new(...)]` attributes are not allowed.
+ --> fail_crate/tests/multiple_field_new.rs:6:5
+  |
+6 |     #[new(default)]
+  |     ^^^^^^^^^^^^^^^

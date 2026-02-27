@@ -1,0 +1,5 @@
+error: `const` specified more than once in main `#[new(...)]`.
+ --> fail_crate/tests/duplicate_const.rs:4:14
+  |
+4 | #[new(const, const)]
+  |              ^^^^^

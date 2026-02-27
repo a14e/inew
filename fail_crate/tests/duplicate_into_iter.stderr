@@ -1,0 +1,5 @@
+error: `into_iter` specified more than once in field `#[new(...)]`.
+ --> fail_crate/tests/duplicate_into_iter.rs:5:22
+  |
+5 |     #[new(into_iter, into_iter)]
+  |                      ^^^^^^^^^

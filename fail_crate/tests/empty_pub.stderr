@@ -1,0 +1,5 @@
+error: Empty `pub()` is not valid. Use `pub` or `pub(<restriction>)`.
+ --> fail_crate/tests/empty_pub.rs:4:7
+  |
+4 | #[new(pub())]
+  |       ^^^^^

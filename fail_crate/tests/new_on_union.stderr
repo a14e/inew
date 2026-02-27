@@ -1,0 +1,5 @@
+error: 'New' can only be derived for structs and enums
+ --> fail_crate/tests/new_on_union.rs:4:7
+  |
+4 | union A {
+  |       ^

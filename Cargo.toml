@@ -20,6 +20,9 @@ quote = "1.0.44"
 proc-macro2 = "1.0.106"
 heck = "0.5.0"
 
+[dev-dependencies]
+trybuild = "1.0.116"
+
 [features]
 default = ["std"]
 std = []

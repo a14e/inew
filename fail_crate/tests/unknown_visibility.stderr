@@ -1,0 +1,5 @@
+error: Unknown visibility inside `pub(...)`. Expected `crate`, `super`, `self`, or `in <path>`.
+ --> fail_crate/tests/unknown_visibility.rs:4:7
+  |
+4 | #[new(pub(what))]
+  |       ^^^^^^^^^
