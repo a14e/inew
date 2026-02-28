@@ -299,8 +299,10 @@ fn main() {
 Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 
 ## Contribution
-
-Any contribution is welcome. Just write tests and submit merge requests
+This library is intentionally minimal and lightweight. Contributions that keep it small and simple are very welcome — 
+just write tests and submit a pull request.
+If your change significantly increases the codebase size or adds new dependencies, 
+please open an issue first to discuss whether it fits the project's scope.
 
 ## Comparison with derive-new
 
