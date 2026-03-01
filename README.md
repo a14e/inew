@@ -299,8 +299,12 @@ fn main() {
 Licensed under either of Apache License, Version 2.0 or MIT license at your option.
 
 ## Contribution
-This library is intentionally minimal and lightweight. Contributions that keep it small and simple are very welcome — 
-just write tests and submit a pull request.
+This library is intentionally minimal and lightweight. 
+Contributions that keep it small and simple are very welcome — just write tests and submit a pull request.
+
+Please keep pull requests small, focused, and limited to a single feature or fix. 
+Large PRs that combine multiple changes are unlikely to be reviewed or accepted.
+
 If your change significantly increases the codebase size or adds new dependencies, 
 please open an issue first to discuss whether it fits the project's scope.
 
