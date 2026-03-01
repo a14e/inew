@@ -1,6 +1,6 @@
 use syn::Attribute;
 
-pub(crate) fn collect_attributes(attributes: &[Attribute]) -> Vec<Attribute> {
+pub(crate) fn collect(attributes: &[Attribute]) -> Vec<Attribute> {
     attributes
         .iter()
         .filter(|attribute| {

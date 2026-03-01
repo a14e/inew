@@ -1,6 +1,5 @@
 error: `optional` cannot be combined with `into_iter` in field `#[new(...)]`.
- --> fail_crate/tests/optional_and_into_iter.rs:5:5
+ --> fail_crate/tests/optional_and_into_iter.rs:5:11
   |
-5 | /     #[new(optional, into_iter)]
-6 | |     x: Vec<u32>
-  | |_______________^
+5 |     #[new(optional, into_iter)]
+  |           ^^^^^^^^

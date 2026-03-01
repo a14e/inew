@@ -1,5 +1,5 @@
 error: `optional` without an explicit `default = ...` cannot be used in constant constructors.
- --> fail_crate/tests/const_and_optional.rs:7:5
+ --> fail_crate/tests/const_and_optional.rs:6:11
   |
-7 |     x: u32
-  |     ^
+6 |     #[new(optional)]
+  |           ^^^^^^^^

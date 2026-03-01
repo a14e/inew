@@ -1,24 +1,40 @@
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::ToTokens;
 use syn::{
-    meta::ParseNestedMeta, parenthesized, token::Paren, Attribute, Error, LitBool, LitStr, Token,
+    meta::ParseNestedMeta, parenthesized, spanned::Spanned, token::Paren, Attribute, Error,
+    LitBool, LitStr, Token,
 };
 
-#[derive(Clone, Copy, PartialEq)]
-pub(crate) enum ItemKind {
-    Struct,
-    Enum,
-}
+use crate::constructor::{BoolArgument, ItemKind};
 
 pub(crate) struct MainOptions {
-    pub visibility: TokenStream,
-    pub constructor_name: Ident,
-    pub no_prefix: bool,
+    pub visibility: Visibility,
+    pub constructor_prefix: Option<Ident>,
     pub constant: bool,
-    pub constant_keyword: TokenStream,
 }
 
-enum Visibility {
+impl From<MainArguments> for MainOptions {
+    fn from(value: MainArguments) -> Self {
+        let no_prefix = value.no_prefix.as_ref().is_some_and(BoolArgument::value);
+
+        let constructor_prefix = if no_prefix {
+            None
+        } else {
+            match value.rename {
+                Some(rename) => Some(rename),
+                None => Some(Ident::new("new", Span::call_site())),
+            }
+        };
+
+        Self {
+            visibility: value.visibility.into(),
+            constructor_prefix,
+            constant: value.constant.as_ref().is_some_and(BoolArgument::value),
+        }
+    }
+}
+
+pub(crate) enum Visibility {
     Private,
     Public,
     Crate,
@@ -27,13 +43,61 @@ enum Visibility {
     In(TokenStream),
 }
 
-pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Result<MainOptions> {
-    let mut visibility = None;
-    let mut rename = None;
-    let mut no_prefix = None;
-    let mut constant = None;
+impl From<Option<PubArgument>> for Visibility {
+    fn from(value: Option<PubArgument>) -> Self {
+        match value {
+            Some(PubArgument::Public) => Visibility::Public,
+            Some(PubArgument::Explicit(is_public)) => {
+                if is_public {
+                    Visibility::Public
+                } else {
+                    Visibility::Private
+                }
+            }
+            Some(PubArgument::Crate) => Visibility::Crate,
+            Some(PubArgument::Super) => Visibility::Super,
+            Some(PubArgument::InSelf) => Visibility::InSelf,
+            Some(PubArgument::In(path)) => Visibility::In(path),
+            None => {
+                #[cfg(feature = "public-default")]
+                {
+                    Visibility::Public;
+                }
+                #[cfg(not(feature = "public-default"))]
+                {
+                    Visibility::Private
+                }
+            }
+        }
+    }
+}
 
+#[derive(Default)]
+struct MainArguments {
+    visibility: Option<PubArgument>,
+    rename: Option<Ident>,
+    no_prefix: Option<BoolArgument>,
+    constant: Option<BoolArgument>,
+}
+
+enum PubArgument {
+    /// #[new(pub)]
+    Public,
+    /// #[new(pub = ...)]
+    Explicit(bool),
+    /// #[new(pub(crate))]
+    Crate,
+    /// #[new(pub(super))]
+    Super,
+    /// #[new(pub(self))]
+    InSelf,
+    /// #[new(pub(in ...))]
+    In(TokenStream),
+}
+
+pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Result<MainOptions> {
     let mut seen_new_attribute = false;
+    let mut arguments = MainArguments::default();
 
     for attribute in attributes {
         if !attribute.path().is_ident("new") {
@@ -52,14 +116,7 @@ pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Res
 
         attribute.parse_nested_meta(|meta| {
             has_options = true;
-            main_options_parser(
-                meta,
-                &mut visibility,
-                &mut no_prefix,
-                &mut rename,
-                &mut constant,
-                item_kind,
-            )
+            main_options_parser(meta, &mut arguments, item_kind)
         })?;
 
         if !has_options {
@@ -69,46 +126,15 @@ pub(crate) fn collect(attributes: &[Attribute], item_kind: ItemKind) -> syn::Res
             ));
         }
 
-        check_invalid_main_options(attribute, &rename, &no_prefix)?;
+        check_invalid_main_arguments(&arguments)?;
     }
 
-    let visibility = visibility.unwrap_or_else(|| {
-        #[cfg(feature = "public-default")]
-        {
-            Visibility::Public
-        }
-        #[cfg(not(feature = "public-default"))]
-        {
-            Visibility::Private
-        }
-    });
-    let visibility_token = create_visibility_token(&visibility);
-
-    let constructor_name = rename.unwrap_or_else(|| Ident::new("new", Span::call_site()));
-    let no_prefix = no_prefix.unwrap_or(false);
-
-    let constant_result = constant.unwrap_or(false);
-    let constant_keyword = if constant_result {
-        quote!(const)
-    } else {
-        quote!()
-    };
-
-    Ok(MainOptions {
-        visibility: visibility_token,
-        constructor_name,
-        no_prefix,
-        constant: constant_result,
-        constant_keyword,
-    })
+    Ok(arguments.into())
 }
 
 fn main_options_parser(
     meta: ParseNestedMeta<'_>,
-    visibility: &mut Option<Visibility>,
-    no_prefix: &mut Option<bool>,
-    rename: &mut Option<Ident>,
-    constant: &mut Option<bool>,
+    arguments: &mut MainArguments,
     item_kind: ItemKind,
 ) -> syn::Result<()> {
     if meta.path.is_ident("public") {
@@ -120,25 +146,25 @@ fn main_options_parser(
     }
 
     if meta.path.is_ident("pub") {
-        return parse_pub(meta, visibility);
+        return parse_pub(meta, &mut arguments.visibility);
     }
 
     if meta.path.is_ident("rename") {
-        return parse_rename(meta, rename, item_kind);
+        return parse_rename(meta, &mut arguments.rename, item_kind);
     }
 
     if meta.path.is_ident("no_prefix") {
-        return parse_no_prefix(meta, no_prefix, item_kind);
+        return parse_no_prefix(meta, &mut arguments.no_prefix, item_kind);
     }
 
     if meta.path.is_ident("const") {
-        return parse_const(meta, constant);
+        return parse_const(meta, &mut arguments.constant);
     }
 
     Err(unknown_argument_error(&meta, item_kind))
 }
 
-fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> syn::Result<()> {
+fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<PubArgument>) -> syn::Result<()> {
     if visibility.is_some() {
         return Err(meta.error("`pub` specified more than once in main `#[new(...)]`."));
     }
@@ -161,7 +187,7 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
                 return Err(meta.error("Unexpected tokens after `crate` in `pub(...)`."));
             }
 
-            *visibility = Some(Visibility::Crate);
+            *visibility = Some(PubArgument::Crate);
             return Ok(());
         }
 
@@ -172,7 +198,7 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
                 return Err(meta.error("Unexpected tokens after `super` in `pub(...)`."));
             }
 
-            *visibility = Some(Visibility::Super);
+            *visibility = Some(PubArgument::Super);
             return Ok(());
         }
 
@@ -183,7 +209,7 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
                 return Err(meta.error("Unexpected tokens after `self` in `pub(...)`."));
             }
 
-            *visibility = Some(Visibility::InSelf);
+            *visibility = Some(PubArgument::InSelf);
             return Ok(());
         }
 
@@ -197,7 +223,7 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
                 return Err(meta.error("Unexpected tokens after `in <path>` in `pub(...)`."));
             }
 
-            *visibility = Some(Visibility::In(path.into_token_stream()));
+            *visibility = Some(PubArgument::In(path.into_token_stream()));
             return Ok(());
         }
 
@@ -215,20 +241,20 @@ fn parse_pub(meta: ParseNestedMeta<'_>, visibility: &mut Option<Visibility>) -> 
         }
 
         let lit_bool = meta.input.parse::<LitBool>()?;
-        *visibility = Some(if lit_bool.value {
-            Visibility::Public
-        } else {
-            Visibility::Private
-        });
+        *visibility = Some(PubArgument::Explicit(lit_bool.value));
         return Ok(());
     }
 
     // #[new(pub)]
-    *visibility = Some(Visibility::Public);
+    *visibility = Some(PubArgument::Public);
     Ok(())
 }
 
-fn parse_rename(meta: ParseNestedMeta<'_>, rename: &mut Option<Ident>, item_kind: ItemKind) -> syn::Result<()> {
+fn parse_rename(
+    meta: ParseNestedMeta<'_>,
+    rename: &mut Option<Ident>,
+    item_kind: ItemKind,
+) -> syn::Result<()> {
     if rename.is_some() {
         return Err(meta.error("`rename` specified more than once in main `#[new(...)]`."));
     }
@@ -268,7 +294,7 @@ fn parse_rename(meta: ParseNestedMeta<'_>, rename: &mut Option<Ident>, item_kind
 
 fn parse_no_prefix(
     meta: ParseNestedMeta<'_>,
-    no_prefix: &mut Option<bool>,
+    no_prefix: &mut Option<BoolArgument>,
     item_kind: ItemKind,
 ) -> syn::Result<()> {
     if item_kind == ItemKind::Struct {
@@ -276,12 +302,14 @@ fn parse_no_prefix(
     }
 
     if no_prefix.is_some() {
-        return Err(meta.error("`no_prefix` specified more than once."));
+        return Err(meta.error("`no_prefix` specified more than once in main `#[new(...)]`."));
     }
+
+    let span = meta.path.span();
 
     // #[new(no_prefix)]
     if !meta.input.peek(Token![=]) {
-        *no_prefix = Some(true);
+        *no_prefix = Some(BoolArgument::new(true, span));
         return Ok(());
     }
 
@@ -294,18 +322,20 @@ fn parse_no_prefix(
 
     let lit_bool = meta.input.parse::<LitBool>()?;
 
-    *no_prefix = Some(lit_bool.value);
+    *no_prefix = Some(BoolArgument::new(lit_bool.value, span));
     Ok(())
 }
 
-fn parse_const(meta: ParseNestedMeta<'_>, constant: &mut Option<bool>) -> syn::Result<()> {
+fn parse_const(meta: ParseNestedMeta<'_>, constant: &mut Option<BoolArgument>) -> syn::Result<()> {
     if constant.is_some() {
         return Err(meta.error("`const` specified more than once in main `#[new(...)]`."));
     }
 
+    let span = meta.path.span();
+
     // #[new(const)]
     if !meta.input.peek(Token![=]) {
-        *constant = Some(true);
+        *constant = Some(BoolArgument::new(true, span));
         return Ok(());
     }
 
@@ -318,7 +348,7 @@ fn parse_const(meta: ParseNestedMeta<'_>, constant: &mut Option<bool>) -> syn::R
 
     let lit_bool = meta.input.parse::<LitBool>()?;
 
-    *constant = Some(lit_bool.value);
+    *constant = Some(BoolArgument::new(lit_bool.value, span));
     Ok(())
 }
 
@@ -333,31 +363,20 @@ fn unknown_argument_error(meta: &ParseNestedMeta<'_>, item_kind: ItemKind) -> Er
     }
 }
 
-fn check_invalid_main_options(
-    attribute: &Attribute,
-    rename: &Option<Ident>,
-    no_prefix: &Option<bool>,
+fn check_invalid_main_arguments(arguments: &MainArguments) -> syn::Result<()> {
+    let no_prefix = arguments
+        .no_prefix
+        .as_ref()
+        .is_some_and(BoolArgument::value);
 
-) -> syn::Result<()> {
-    if rename.is_some() && no_prefix.is_some() {
-        return Err(Error::new_spanned(
-            attribute,
-            "`rename` cannot be combined with `no_prefix` in main `#[new(...)]`.",
-        ));
+    if arguments.rename.is_some() && no_prefix {
+        if let Some(no_prefix) = &arguments.no_prefix {
+            return Err(Error::new(
+                no_prefix.span,
+                "`rename` cannot be combined with `no_prefix` in main `#[new(...)]`.",
+            ));
+        }
     }
 
     Ok(())
-}
-
-fn create_visibility_token(visibility: &Visibility) -> TokenStream {
-    use Visibility::*;
-
-    match visibility {
-        Private => quote!(),
-        Public => quote!(pub),
-        Crate => quote!(pub(crate)),
-        Super => quote!(pub(super)),
-        InSelf => quote!(pub(self)),
-        In(path) => quote!(pub(in #path)),
-    }
 }

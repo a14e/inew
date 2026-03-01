@@ -1,6 +1,5 @@
-error: Parameterless `default` is not needed when `optional` is present. Remove `default`.
- --> fail_crate/tests/default_and_optional.rs:5:5
+error: Parameterless `default` is not needed when `optional` is true. Remove `default`.
+ --> fail_crate/tests/default_and_optional.rs:5:11
   |
-5 | /     #[new(default, optional)]
-6 | |     x: u32,
-  | |__________^
+5 |     #[new(default, optional)]
+  |           ^^^^^^^

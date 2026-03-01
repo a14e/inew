@@ -1,6 +1,5 @@
 error: `optional` cannot be combined with `into` in field `#[new(...)]`.
- --> fail_crate/tests/optional_and_into.rs:5:5
+ --> fail_crate/tests/optional_and_into.rs:5:11
   |
-5 | /     #[new(optional, into)]
-6 | |     x: u32
-  | |__________^
+5 |     #[new(optional, into)]
+  |           ^^^^^^^^

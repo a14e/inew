@@ -1,5 +1,5 @@
 error: Could not infer iterator item type from field type. Use `#[new(into_iter = T)]` to specify the item type explicitly.
- --> fail_crate/tests/into_iter_unknown_item.rs:7:8
+ --> fail_crate/tests/into_iter_unknown_item.rs:6:8
   |
-7 |     x: u32
+6 |     x: u32
   |        ^^^

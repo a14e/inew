@@ -1,6 +1,5 @@
 error: `default` cannot be combined with `into` in field `#[new(...)]`.
- --> fail_crate/tests/default_and_into.rs:5:5
+ --> fail_crate/tests/default_and_into.rs:5:11
   |
-5 | /     #[new(default, into)]
-6 | |     x: u32
-  | |__________^
+5 |     #[new(default, into)]
+  |           ^^^^^^^

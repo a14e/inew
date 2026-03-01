@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use syn::{punctuated::Punctuated, token::Comma, Attribute, Generics, Variant};
 
-use crate::constructor::{generator, linter, options::{self, ItemKind}, plan};
+use crate::constructor::{field_options, generator, lint_extractor, main_options, ItemKind};
 
 pub(crate) fn process_input(
     ident: Ident,
@@ -11,7 +11,7 @@ pub(crate) fn process_input(
     generics: Generics,
     attributes: Vec<Attribute>,
 ) -> syn::Result<TokenStream> {
-    let options = options::collect(&attributes, ItemKind::Enum)?;
+    let options = main_options::collect(&attributes, ItemKind::Enum)?;
 
     if variants.is_empty() {
         return Ok(quote!());
@@ -20,30 +20,29 @@ pub(crate) fn process_input(
     let mut constructors = Vec::new();
 
     for variant in variants {
-        let plan = plan::build(&variant.fields, options.constant)?;
+        let plan = field_options::collect(&variant.fields, options.constant)?;
 
-        let prefix = &options.constructor_name;
         let snake_case = variant.ident.to_string().to_snake_case();
-        let constructor_name = if options.no_prefix {
-            format_ident!("{}", snake_case)
-        } else {
+        let constructor_name = if let Some(prefix) = &options.constructor_prefix {
             format_ident!("{}_{}", prefix, snake_case)
+        } else {
+            format_ident!("{}", snake_case)
         };
         let variant_ident = &variant.ident;
 
-        let constructor = generator::generate_constructor(
-            &plan,
+        let constructor = generator::create_constructor(
+            plan,
             &options.visibility,
-            &options.constant_keyword,
-            &constructor_name,
-            &quote!(Self::#variant_ident),
+            options.constant,
+            quote!(#constructor_name),
+            quote!(Self::#variant_ident),
         );
 
         constructors.push(constructor);
     }
 
     let (impl_generics, type_generics, where_clause) = generics.split_for_impl();
-    let lint_attributes = linter::collect_attributes(&attributes);
+    let lint_attributes = lint_extractor::collect(&attributes);
 
     Ok(quote! {
         #(#lint_attributes)*
